@@ -456,7 +456,7 @@ func newSection(name string, sectHdr SectHdr, fileName string) (*Section, error)
 }
 
 // StrTbl represents a string table in an ELF file. It is a mapping from byte
-// indeces to strings. 
+// indeces to strings.
 type StrTbl map[uint32]string
 
 func readStrTbl(file *os.File, strTblSectHdr SectHdr) (StrTbl, error) {

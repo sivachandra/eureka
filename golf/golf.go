@@ -48,8 +48,8 @@ func (elf *ELF) SectNameTblIndex() uint32 {
 }
 
 // Returns a mapping from section names to a slice of sections. Since multiple
-// sections have the same name, the each name maps to a slice sections having
-// that name.
+// sections can have the same name, each name maps to a slice of sections having
+// that same name.
 func (elf *ELF) SectMap() SectMap {
 	return elf.sectMap
 }
