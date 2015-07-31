@@ -335,13 +335,15 @@ func readHeader(file *os.File) (ELFHeader, error) {
 	fileName := file.Name()
 	_, err := file.Seek(0, 0)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to seek while reading '%s'.\n%s", fileName, err.Error())
+		err = fmt.Errorf("Unable to seek while reading '%s'.\n%s", fileName, err.Error())
+		return nil, err
 	}
 
 	var ident ELFIdent
 	err = binary.Read(file, binary.LittleEndian, &ident)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading ELFIdent from '%s'.\n%s", fileName, err.Error())
+		err = fmt.Errorf("Error reading ELFIdent from '%s'.\n%s", fileName, err.Error())
+		return nil, err
 	}
 
 	if ident.Class == Class32 {

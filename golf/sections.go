@@ -383,7 +383,8 @@ func (section *Section) Data(endianess ELFEndianess) (interface{}, error) {
 		section.data, err = section.RawData()
 	}
 	if err != nil {
-		err = fmt.Errorf("Error reading data for section '%s'.\n%s", section.name, err.Error())
+		err = fmt.Errorf(
+			"Error reading data for section '%s'.\n%s", section.name, err.Error())
 		return nil, err
 	}
 
@@ -428,7 +429,8 @@ func (section *Section) RawData() ([]byte, error) {
 		var oneByte byte
 		err = binary.Read(file, binary.LittleEndian, &oneByte)
 		if err != nil {
-			err = fmt.Errorf("Error reading raw data from '%s'.\n%s", file.Name(), err.Error())
+			err = fmt.Errorf(
+				"Error reading raw data from '%s'.\n%s", file.Name(), err.Error())
 			return nil, err
 		}
 		data = append(data, oneByte)
@@ -463,7 +465,8 @@ func readStrTbl(file *os.File, strTblSectHdr SectHdr) (StrTbl, error) {
 	_, err := file.Seek(int64(strTblSectHdr.Offset()), 0)
 	if err != nil {
 		err = fmt.Errorf(
-			"Unable to seek to the string table section in '%s'.\n%s", file.Name(), err.Error())
+			"Unable to seek to the string table section in '%s'.\n%s",
+			file.Name(), err.Error())
 		return nil, err
 	}
 
@@ -478,7 +481,8 @@ func readStrTbl(file *os.File, strTblSectHdr SectHdr) (StrTbl, error) {
 		return nil, err
 	}
 	if char != 0 {
-		err = fmt.Errorf("First string in the string table of '%s' is not NULL.\n", file.Name())
+		err = fmt.Errorf(
+			"First string in the string table of '%s' is not NULL.\n", file.Name())
 		return nil, err
 	}
 	stringMap[uint32(0)] = string(char)
@@ -488,7 +492,8 @@ func readStrTbl(file *os.File, strTblSectHdr SectHdr) (StrTbl, error) {
 		err = binary.Read(file, binary.LittleEndian, &char)
 		if err != nil {
 			err = fmt.Errorf(
-				"Error reading string table from '%s'.\n%s", file.Name(), len(str), err.Error())
+				"Error reading string table from '%s'.\n%s",
+				file.Name(), len(str), err.Error())
 			return nil, err
 		}
 
@@ -515,7 +520,8 @@ func readSectMap(f *os.File, sectHdrTbl []SectHdr, sectNameTblIndex uint32) (Sec
 
 	strTbl, err := readStrTbl(f, sectHdrTbl[sectNameTblIndex])
 	if err != nil {
-		err = fmt.Errorf("Error reading section name table from '%s'.\n%s", f.Name(), err.Error())
+		err = fmt.Errorf(
+			"Error reading section name table from '%s'.\n%s", f.Name(), err.Error())
 		return nil, err
 	}
 	for i, sectHdr := range sectHdrTbl {
@@ -639,7 +645,8 @@ func readSymTab(file *os.File, sectHdr SectHdr, endianess ELFEndianess) (SymTab,
 	_, err := file.Seek(int64(sectHdr.Offset()), 0)
 	if err != nil {
 		err = fmt.Errorf(
-			"Unable to seek to the symtab offset in '%s'.\n%s", file.Name(), err.Error())
+			"Unable to seek to the symtab offset in '%s'.\n%s",
+			file.Name(), err.Error())
 		return nil, err
 	}
 

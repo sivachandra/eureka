@@ -39,7 +39,7 @@ func TestSections(t *testing.T) {
 	strTbl := strTblData.(StrTbl)
 	if len(strTbl) != 34 {
 		t.Errorf(
-			"Incorrect number of entries in the section name table. Expecting 34, found %d.\n",
+			"Incorrect entry count in section name table. Expecting 34, found %d.\n",
 			len(strTbl))
 		return
 	}

@@ -184,7 +184,8 @@ func readSegHdrTbl(file *os.File, header ELFHeader) ([]SegHdr, error) {
 	_, err := file.Seek(int64(header.ProgHdrTblOffset()), 0)
 	if err != nil {
 		err = fmt.Errorf(
-			"Unable to seek to the program header table in '%s'.\n%s", file.Name(), err.Error())
+			"Unable to seek to the program header table in '%s'.\n%s",
+			file.Name(), err.Error())
 		return nil, err
 	}
 
@@ -204,7 +205,8 @@ func readSegHdrTbl(file *os.File, header ELFHeader) ([]SegHdr, error) {
 
 		if err != nil {
 			err = fmt.Errorf(
-				"Error reading segment header from '%s'.\n%s", file.Name(), err.Error())
+				"Error reading segment header from '%s'.\n%s",
+				file.Name(), err.Error())
 			return nil, err
 		}
 
