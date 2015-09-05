@@ -45,6 +45,9 @@ type ArgSet struct {
 	// Command name
 	name string
 
+	// Sub-commands
+	subCommands map[string]*ArgSet
+
 	// Command description
 	description string
 
@@ -73,16 +76,35 @@ type ArgSet struct {
 // |description|.
 func NewArgSet(name string, description string) *ArgSet {
 	argSet := new(ArgSet)
+	argSet.name = name
 	argSet.description = description
 	argSet.shouldRenderHelp = false
 	argSet.parsed = false
 	argSet.namedArgMap = make(map[string]*NamedArg)
+	argSet.subCommands = make(map[string]*ArgSet)
 
 	argSet.AddBoolArg(
 		"help", "h", &argSet.shouldRenderHelp, argSet.shouldRenderHelp,
 		false, fmt.Sprintf("Print '%s' usage information.", name))
 
 	return argSet
+}
+
+func (argSet *ArgSet) Name() string {
+	return argSet.name
+}
+
+func (argSet *ArgSet) AddSubCommand(subArgSet *ArgSet) error {
+	subCommandName := subArgSet.Name()
+	_, exists := argSet.subCommands[subCommandName]
+	if exists {
+		return fmt.Errorf(
+			"Sub-command with name '%s' already registered with '%s'.",
+			subCommandName, argSet.name)
+	}
+
+	argSet.subCommands[subCommandName] = subArgSet
+	return nil
 }
 
 func (argSet *ArgSet) addNamedArg(
@@ -135,7 +157,17 @@ func (argSet *ArgSet) AddStringArg(
 	*dest = def
 }
 
-func (argSet *ArgSet) Parse(arguments []string) error {
+func (argSet *ArgSet) Parse(arguments []string) ([]string, error) {
+	processedCmds := []string{argSet.name}
+
+	if len(arguments) > 0 {
+		subCommand, exists := argSet.subCommands[arguments[0]]
+		if exists {
+			subCommandList, err := subCommand.Parse(arguments[1:])
+			return append(subCommandList, argSet.name), err
+		}
+	}
+
 	for i := 0; i < len(arguments); i++ {
 		argument := arguments[i]
 		if strings.HasPrefix(argument, "-") {
@@ -164,7 +196,8 @@ func (argSet *ArgSet) Parse(arguments []string) error {
 				var exists bool
 				arg, exists = argSet.namedArgMap[name]
 				if !exists {
-					return fmt.Errorf("Unknown argument '%s'.", name)
+					err := fmt.Errorf("Unknown argument '%s'.", name)
+					return processedCmds, err
 				}
 
 				// If the argument is of bool type, then the next argument
@@ -186,15 +219,17 @@ func (argSet *ArgSet) Parse(arguments []string) error {
 				}
 			} else if indexOfEqual == 0 {
 				// This is an error
-				return fmt.Errorf(
-					"Probably missing an argument name in '%s'.", argument);
+				err := fmt.Errorf(
+					"Probably missing an argument name in '%s'.", argument)
+				return processedCmds, err
 			} else {
 				name := stripped[0:indexOfEqual]
 				valStr = stripped[indexOfEqual + 1:]
 				var exists bool
 				arg, exists = argSet.namedArgMap[name]
 				if !exists {
-					return fmt.Errorf("Unknown argument '%s'.", name)
+					err := fmt.Errorf("Unknown argument '%s'.", name)
+					return processedCmds, err
 				}
 			}
 
@@ -250,16 +285,18 @@ func (argSet *ArgSet) Parse(arguments []string) error {
 					*ptr = valStr
 				}
 			default:
-				return fmt.Errorf("Unexpected argument type while parsing.")
+				err := fmt.Errorf("Unexpected argument type while parsing.")
+				return processedCmds, err
 			}
 
 			if !valid {
-				return fmt.Errorf("Unable to perform type assertion while parsing.")
+				err := fmt.Errorf("Unable to perform type assertion while parsing.")
+				return processedCmds, err
 			}
 			if err != nil {
-				return fmt.Errorf(
-					"Error parsing value of argument '%s'.\n%s",
-					err.Error())
+				err := fmt.Errorf(
+					"Error parsing value of argument '%s'.\n%s", err.Error())
+				return processedCmds, err
 			}
 
 			if arg.required {
@@ -273,7 +310,8 @@ func (argSet *ArgSet) Parse(arguments []string) error {
 
 	for _, arg := range argSet.namedArgList {
 		if arg.required && !arg.set {
-			return fmt.Errorf("Required argument '%s' not specified.", arg.name)
+			err := fmt.Errorf("Required argument '%s' not specified.", arg.name)
+			return processedCmds, err
 		}
 	}
 
@@ -282,7 +320,7 @@ func (argSet *ArgSet) Parse(arguments []string) error {
 		os.Exit(0)
 	}
 
-	return nil
+	return processedCmds, nil
 }
 
 func (argSet *ArgSet) Args() []Arg {

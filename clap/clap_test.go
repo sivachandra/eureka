@@ -6,11 +6,10 @@
 // Website: http://www.github.com/sivachandra/eureka
 // #############################################################################
 
-// The clap package provides Command Line Argument Parsing facilities.
-// It is a built as a facade over the standard library package 'flag'.
 package clap
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -21,6 +20,9 @@ var uint64Arg uint64
 var boolArg bool
 var float64Arg float64
 var stringArg string
+
+var intSubArg int
+var int64SubArg int64
 
 func createTestArgSet() *ArgSet {
 	argSet := NewArgSet("command", "A test command.")
@@ -36,15 +38,32 @@ func createTestArgSet() *ArgSet {
 	return argSet
 }
 
+func addSubCmd(argSet *ArgSet) error {
+	subCmd := NewArgSet("subcmd", "A test sub-command.")
+	subCmd.AddIntArg("int", "i", &intSubArg, 0, true, "An int argument.")
+	subCmd.AddInt64Arg("int64", "l", &int64SubArg, 0, true, "An int64 argument.")
+
+	err := argSet.AddSubCommand(subCmd)
+	if err !=  nil {
+		return fmt.Errorf("Unable to add sub command.\n%s", err.Error())
+	}
+
+	return nil
+}
+
 func TestArgs(t *testing.T) {
 	argSet := createTestArgSet()
 	cmdLine := []string{
 		"-int", "10", "-int64", "20", "-uint", "30", "-uint64", "40", "-bool",
 		"-float64", "1.23", "-string", "hello"}
-	err := argSet.Parse(cmdLine)
+	cmdList, err := argSet.Parse(cmdLine)
 	if err != nil {
 		t.Errorf("Error while parsing:\n%s", err.Error())
 		return
+	}
+
+	if cmdList[0] != "command" {
+		t.Errorf("Bad command name. Expecting '%s'; found '%s'", "command", cmdList[0]);
 	}
 
 	if intArg != 10 {
@@ -75,10 +94,14 @@ func TestArgsWithEqual(t *testing.T) {
 	cmdLine := []string{
 		"-int=10", "-int64=20", "-uint=30", "-uint64=40", "-bool=true",
 		"-float64=1.23", "-string=hello"}
-	err := argSet.Parse(cmdLine)
+	cmdList, err := argSet.Parse(cmdLine)
 	if err != nil {
 		t.Errorf("Error while parsing:\n%s", err.Error())
 		return
+	}
+
+	if cmdList[0] != "command" {
+		t.Errorf("Bad command name");
 	}
 
 	if intArg != 10 {
@@ -108,10 +131,14 @@ func TestShortArgs(t *testing.T) {
 	argSet := createTestArgSet()
 	cmdLine := []string{
 		"-i", "10", "-l", "20", "-u", "30", "-x", "40", "-b", "-f", "1.23", "-s", "hello"}
-	err := argSet.Parse(cmdLine)
+	cmdList, err := argSet.Parse(cmdLine)
 	if err != nil {
 		t.Errorf("Error while parsing:\n%s", err.Error())
 		return
+	}
+
+	if cmdList[0] != "command" {
+		t.Errorf("Bad command name");
 	}
 
 	if intArg != 10 {
@@ -141,10 +168,14 @@ func TestShortArgsWithEqual(t *testing.T) {
 	argSet := createTestArgSet()
 	cmdLine := []string{
 		"-i=10", "-l=20", "-u=30", "-x=40", "-b=true", "-f=1.23", "-s=hello"}
-	err := argSet.Parse(cmdLine)
+	cmdList, err := argSet.Parse(cmdLine)
 	if err != nil {
 		t.Errorf("Error while parsing:\n%s", err.Error())
 		return
+	}
+
+	if cmdList[0] != "command" {
+		t.Errorf("Bad command name");
 	}
 
 	if intArg != 10 {
@@ -167,5 +198,31 @@ func TestShortArgsWithEqual(t *testing.T) {
 	}
 	if stringArg != "hello" {
 		t.Errorf("Argument 'string' has value '%s'; expecting '%s'.", stringArg, "hello")
+	}
+}
+
+func TestSubCommand(t *testing.T) {
+	argSet := createTestArgSet()
+	err := addSubCmd(argSet)
+	if err != nil {
+		t.Errorf(err.Error());
+	}
+
+	cmdLine := []string{"subcmd", "-i=10", "-l=20"}
+	cmdList, err := argSet.Parse(cmdLine)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	if cmdList[0] != "subcmd" || cmdList[1] != "command" {
+		t.Errorf("Expecting command list [subcmd, command]. Found '%s'", cmdList)
+	}
+
+	if intSubArg != 10 {
+		t.Errorf("Argument 'int' to subcommand has value '%d'; Expecting 10", intSubArg)
+	}
+
+	if int64SubArg != 20 {
+		t.Errorf("Argument 'int64' to subcommand has value '%d'; Expecting 20", int64SubArg)
 	}
 }
