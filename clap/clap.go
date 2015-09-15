@@ -28,6 +28,86 @@ type NamedArg struct {
 	set bool
 }
 
+func (namedArg *NamedArg) Reset() error {
+	namedArg.set = false
+	if !namedArg.required {
+		var valid bool
+		var err error
+		switch namedArg.dest.(type) {
+		case *int:
+			var ptr *int
+			ptr, valid = namedArg.dest.(*int)
+			if valid {
+				var int64Val int64
+				int64Val, err = strconv.ParseInt(namedArg.defValStr, 0, 0)
+				if err == nil {
+					*ptr = int(int64Val)
+				}
+			}
+		case *uint:
+			var ptr *uint
+			ptr, valid = namedArg.dest.(*uint)
+			if valid {
+				var uint64Val uint64
+				uint64Val, err = strconv.ParseUint(namedArg.defValStr, 0, 0)
+				if err == nil {
+					*ptr = uint(uint64Val)
+				}
+			}
+		case *int64:
+			var ptr *int64
+			ptr, valid = namedArg.dest.(*int64)
+			if valid {
+				*ptr, err = strconv.ParseInt(namedArg.defValStr, 0, 64)
+			}
+		case *uint64:
+			var ptr *uint64
+			ptr, valid = namedArg.dest.(*uint64)
+			if valid {
+				*ptr, err = strconv.ParseUint(namedArg.defValStr, 0, 64)
+			}
+		case *float64:
+			var ptr *float64
+			ptr, valid = namedArg.dest.(*float64)
+			if valid {
+				*ptr, err = strconv.ParseFloat(namedArg.defValStr, 64)
+			}
+		case *bool:
+			var ptr *bool
+			ptr, valid = namedArg.dest.(*bool)
+			if valid {
+				*ptr, err = strconv.ParseBool(namedArg.defValStr)
+			}
+		case *string:
+			var ptr *string
+			ptr, valid = namedArg.dest.(*string)
+			if valid {
+				*ptr = namedArg.defValStr
+			}
+		default:
+			err := fmt.Errorf(
+				"Unexpected argument type while resetting named arg '%s'.",
+				namedArg.name)
+			return err
+		}
+
+		if !valid {
+			err = fmt.Errorf(
+				"Unable to cast to argument type for arg '%s'.", namedArg.name)
+			return err
+		}
+		if err != nil {
+			err = fmt.Errorf(
+				"Error while resetting named arg '%s' to default value.\n%s",
+				namedArg.name,
+				err.Error())
+			return err
+		}
+	}
+
+	return nil
+}
+
 func newNamedArg(name, short, help, defValStr string, dest interface{}, required bool) *NamedArg {
 	arg := new(NamedArg)
 	arg.name = name
@@ -240,7 +320,8 @@ func (argSet *ArgSet) Parse(arguments []string) ([]string, error) {
 				var ptr *int
 				ptr, valid = arg.dest.(*int)
 				if valid {
-					int64Val, err := strconv.ParseInt(valStr, 0, 0)
+					var int64Val int64
+					int64Val, err = strconv.ParseInt(valStr, 0, 0)
 					if err == nil {
 						*ptr = int(int64Val)
 					}
@@ -249,7 +330,8 @@ func (argSet *ArgSet) Parse(arguments []string) ([]string, error) {
 				var ptr *uint
 				ptr, valid = arg.dest.(*uint)
 				if valid {
-					uint64Val, err := strconv.ParseUint(valStr, 0, 0)
+					var uint64Val uint64
+					uint64Val, err = strconv.ParseUint(valStr, 0, 0)
 					if err == nil {
 						*ptr = uint(uint64Val)
 					}
@@ -325,6 +407,31 @@ func (argSet *ArgSet) Parse(arguments []string) ([]string, error) {
 
 func (argSet *ArgSet) Args() []Arg {
 	return argSet.argList
+}
+
+func (argSet *ArgSet) Clear() error {
+	argSet.argList = nil
+
+	for _, namedArg := range argSet.namedArgList {
+		err := namedArg.Reset()
+		if err != nil {
+			err = fmt.Errorf(
+				"Unable to clear arg set '%s'.\n%s'", argSet.name, err.Error())
+			return err
+		}
+	}
+
+	for _, subCmd := range argSet.subCommands {
+		err := subCmd.Clear()
+		if err != nil {
+			err = fmt.Errorf(
+				"Unable to clear arg set '%s'. Error clearing sub cmd '%s'.\n%s",
+				err.Error())
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (argSet *ArgSet) ShouldRenderHelp() bool {
