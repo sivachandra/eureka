@@ -11,7 +11,6 @@ package clap
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -244,7 +243,7 @@ func (cmd *Cmd) Parse(arguments []string) ([]string, error) {
 		subCmd, exists := cmd.subCmds[arguments[0]]
 		if exists {
 			subCmdList, err := subCmd.Parse(arguments[1:])
-			return append(subCmdList, cmd.name), err
+			return append(processedCmds, subCmdList...), err
 		}
 	}
 
@@ -390,16 +389,13 @@ func (cmd *Cmd) Parse(arguments []string) ([]string, error) {
 		}
 	}
 
-	for _, arg := range cmd.namedArgList {
-		if arg.required && !arg.set {
-			err := fmt.Errorf("Required argument '%s' not specified.", arg.name)
-			return processedCmds, err
+	if !cmd.shouldRenderHelp {
+		for _, arg := range cmd.namedArgList {
+			if arg.required && !arg.set {
+				err := fmt.Errorf("Required argument '%s' not specified.", arg.name)
+				return processedCmds, err
+			}
 		}
-	}
-
-	if cmd.shouldRenderHelp {
-		cmd.RenderHelp()
-		os.Exit(0)
 	}
 
 	return processedCmds, nil
@@ -416,7 +412,7 @@ func (cmd *Cmd) Clear() error {
 		err := namedArg.Reset()
 		if err != nil {
 			err = fmt.Errorf(
-				"Unable to clear arg set '%s'.\n%s'", cmd.name, err.Error())
+				"Unable to clear command '%s'.\n%s'", cmd.name, err.Error())
 			return err
 		}
 	}
@@ -425,8 +421,8 @@ func (cmd *Cmd) Clear() error {
 		err := subCmd.Clear()
 		if err != nil {
 			err = fmt.Errorf(
-				"Unable to clear arg set '%s'. Error clearing sub cmd '%s'.\n%s",
-				err.Error())
+				"Unable to clear sub-command '%s' of command '%s'.\n%s",
+				cmd.name, subCmd.name, err.Error())
 			return err
 		}
 	}
@@ -440,6 +436,15 @@ func (cmd *Cmd) ShouldRenderHelp() bool {
 
 func (cmd *Cmd) RenderHelp() {
 	fmt.Printf("%s\n\n", cmd.description)
+
+	if len(cmd.subCmds) > 0 {
+		fmt.Printf("Sub-commands:\n")
+		for _, subCmd := range cmd.subCmds {
+			fmt.Printf("     %s\n", subCmd.name)
+		}
+		fmt.Printf("\n")
+	}
+
 	fmt.Printf("Options:\n")
 	for _, arg := range cmd.namedArgList {
 		fmt.Printf("  -%s,  --%s\n", arg.short, arg.name)

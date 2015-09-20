@@ -220,8 +220,8 @@ func TestSubCommand(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	if cmdList[0] != "subcmd" || cmdList[1] != "command" {
-		t.Errorf("Expecting command list [subcmd, command]. Found '%s'", cmdList)
+	if cmdList[1] != "subcmd" || cmdList[0] != "command" {
+		t.Errorf("Expecting command list [command, subcmd]. Found '%s'", cmdList)
 	}
 
 	if intSubArg != 10 {
