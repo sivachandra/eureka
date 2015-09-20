@@ -26,27 +26,27 @@ var defIntArg int
 var intSubArg int
 var int64SubArg int64
 
-func createTestArgSet() *ArgSet {
-	argSet := NewArgSet("command", "A test command.")
+func createTestCmd() *Cmd {
+	cmd := NewCmd("command", "A test command.")
 
-	argSet.AddIntArg("int", "i", &intArg, 0, true, "An int argument.")
-	argSet.AddIntArg("dint", "d", &defIntArg, 54321, false, "A default int argument.")
-	argSet.AddInt64Arg("int64", "l", &int64Arg, 0, true, "An int64 argument.")
-	argSet.AddUIntArg("uint", "u", &uintArg, 0, true, "A uint argument.")
-	argSet.AddUInt64Arg("uint64", "x", &uint64Arg, 0, true, "A uint64 argument.")
-	argSet.AddBoolArg("bool", "b", &boolArg, false, true, "A bool argument.")
-	argSet.AddFloat64Arg("float64", "f", &float64Arg, 0, true, "A float64 argument.")
-	argSet.AddStringArg("string", "s", &stringArg, "empty", true, "A string argument.")
+	cmd.AddIntArg("int", "i", &intArg, 0, true, "An int argument.")
+	cmd.AddIntArg("dint", "d", &defIntArg, 54321, false, "A default int argument.")
+	cmd.AddInt64Arg("int64", "l", &int64Arg, 0, true, "An int64 argument.")
+	cmd.AddUIntArg("uint", "u", &uintArg, 0, true, "A uint argument.")
+	cmd.AddUInt64Arg("uint64", "x", &uint64Arg, 0, true, "A uint64 argument.")
+	cmd.AddBoolArg("bool", "b", &boolArg, false, true, "A bool argument.")
+	cmd.AddFloat64Arg("float64", "f", &float64Arg, 0, true, "A float64 argument.")
+	cmd.AddStringArg("string", "s", &stringArg, "empty", true, "A string argument.")
 
-	return argSet
+	return cmd
 }
 
-func addSubCmd(argSet *ArgSet) error {
-	subCmd := NewArgSet("subcmd", "A test sub-command.")
+func addSubCmd(cmd *Cmd) error {
+	subCmd := NewCmd("subcmd", "A test sub-command.")
 	subCmd.AddIntArg("int", "i", &intSubArg, 0, true, "An int argument.")
 	subCmd.AddInt64Arg("int64", "l", &int64SubArg, 0, true, "An int64 argument.")
 
-	err := argSet.AddSubCommand(subCmd)
+	err := cmd.AddSubCmd(subCmd)
 	if err !=  nil {
 		return fmt.Errorf("Unable to add sub command.\n%s", err.Error())
 	}
@@ -55,11 +55,11 @@ func addSubCmd(argSet *ArgSet) error {
 }
 
 func TestArgs(t *testing.T) {
-	argSet := createTestArgSet()
+	cmd := createTestCmd()
 	cmdLine := []string{
 		"-int", "10", "-int64", "20", "-uint", "30", "-uint64", "40", "-bool",
 		"-float64", "1.23", "-string", "hello"}
-	cmdList, err := argSet.Parse(cmdLine)
+	cmdList, err := cmd.Parse(cmdLine)
 	if err != nil {
 		t.Errorf("Error while parsing:\n%s", err.Error())
 		return
@@ -96,11 +96,11 @@ func TestArgs(t *testing.T) {
 }
 
 func TestArgsWithEqual(t *testing.T) {
-	argSet := createTestArgSet()
+	cmd := createTestCmd()
 	cmdLine := []string{
 		"-int=10", "-int64=20", "-uint=30", "-uint64=40", "-bool=true",
 		"-float64=1.23", "-string=hello"}
-	cmdList, err := argSet.Parse(cmdLine)
+	cmdList, err := cmd.Parse(cmdLine)
 	if err != nil {
 		t.Errorf("Error while parsing:\n%s", err.Error())
 		return
@@ -134,10 +134,10 @@ func TestArgsWithEqual(t *testing.T) {
 }
 
 func TestShortArgs(t *testing.T) {
-	argSet := createTestArgSet()
+	cmd := createTestCmd()
 	cmdLine := []string{
 		"-i", "10", "-l", "20", "-u", "30", "-x", "40", "-b", "-f", "1.23", "-s", "hello"}
-	cmdList, err := argSet.Parse(cmdLine)
+	cmdList, err := cmd.Parse(cmdLine)
 	if err != nil {
 		t.Errorf("Error while parsing:\n%s", err.Error())
 		return
@@ -171,10 +171,10 @@ func TestShortArgs(t *testing.T) {
 }
 
 func TestShortArgsWithEqual(t *testing.T) {
-	argSet := createTestArgSet()
+	cmd := createTestCmd()
 	cmdLine := []string{
 		"-i=10", "-l=20", "-u=30", "-x=40", "-b=true", "-f=1.23", "-s=hello"}
-	cmdList, err := argSet.Parse(cmdLine)
+	cmdList, err := cmd.Parse(cmdLine)
 	if err != nil {
 		t.Errorf("Error while parsing:\n%s", err.Error())
 		return
@@ -208,14 +208,14 @@ func TestShortArgsWithEqual(t *testing.T) {
 }
 
 func TestSubCommand(t *testing.T) {
-	argSet := createTestArgSet()
-	err := addSubCmd(argSet)
+	cmd := createTestCmd()
+	err := addSubCmd(cmd)
 	if err != nil {
 		t.Errorf(err.Error());
 	}
 
 	cmdLine := []string{"subcmd", "-i=10", "-l=20"}
-	cmdList, err := argSet.Parse(cmdLine)
+	cmdList, err := cmd.Parse(cmdLine)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -234,16 +234,16 @@ func TestSubCommand(t *testing.T) {
 }
 
 func TestCommandClearing(t *testing.T) {
-	argSet := createTestArgSet()
+	cmd := createTestCmd()
 	cmdLine := []string{
 		"-i=10", "-d=12345", "-l=20", "-u=30", "-x=40", "-b=true", "-f=1.23", "-s=hello"}
-	cmdList, err := argSet.Parse(cmdLine)
+	cmdList, err := cmd.Parse(cmdLine)
 	if err != nil {
 		t.Errorf("Error while parsing first time:\n%s", err.Error())
 		return
 	}
 
-	err = argSet.Clear()
+	err = cmd.Clear()
 	if err != nil {
 		t.Errorf("Error clearing arg set.\n%s", err.Error())
 		return
@@ -255,7 +255,7 @@ func TestCommandClearing(t *testing.T) {
 			defIntArg, 54321)
 	}
 
-	cmdList, err = argSet.Parse(cmdLine)
+	cmdList, err = cmd.Parse(cmdLine)
 	if err != nil {
 		t.Errorf("Error while parsing second time:\n%s", err.Error())
 		return

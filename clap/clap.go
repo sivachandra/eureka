@@ -121,12 +121,12 @@ func newNamedArg(name, short, help, defValStr string, dest interface{}, required
 	return arg
 }
 
-type ArgSet struct {
+type Cmd struct {
 	// Command name
 	name string
 
 	// Sub-commands
-	subCommands map[string]*ArgSet
+	subCmds map[string]*Cmd
 
 	// Command description
 	description string
@@ -150,101 +150,101 @@ type ArgSet struct {
 	parsed bool
 }
 
-// NewArgSet creates a new argument set for a command given by |name|. The
-// description of the command (which is printed along when the command is
+// NewCmd creates a new command with name |name|.
+// The description of the command (which is printed when the command is
 // executed with '-h' or '--help' options) should be specified in
 // |description|.
-func NewArgSet(name string, description string) *ArgSet {
-	argSet := new(ArgSet)
-	argSet.name = name
-	argSet.description = description
-	argSet.shouldRenderHelp = false
-	argSet.parsed = false
-	argSet.namedArgMap = make(map[string]*NamedArg)
-	argSet.subCommands = make(map[string]*ArgSet)
+func NewCmd(name string, description string) *Cmd {
+	cmd := new(Cmd)
+	cmd.name = name
+	cmd.description = description
+	cmd.shouldRenderHelp = false
+	cmd.parsed = false
+	cmd.namedArgMap = make(map[string]*NamedArg)
+	cmd.subCmds = make(map[string]*Cmd)
 
-	argSet.AddBoolArg(
-		"help", "h", &argSet.shouldRenderHelp, argSet.shouldRenderHelp,
+	cmd.AddBoolArg(
+		"help", "h", &cmd.shouldRenderHelp, cmd.shouldRenderHelp,
 		false, fmt.Sprintf("Print '%s' usage information.", name))
 
-	return argSet
+	return cmd
 }
 
-func (argSet *ArgSet) Name() string {
-	return argSet.name
+func (cmd *Cmd) Name() string {
+	return cmd.name
 }
 
-func (argSet *ArgSet) AddSubCommand(subArgSet *ArgSet) error {
-	subCommandName := subArgSet.Name()
-	_, exists := argSet.subCommands[subCommandName]
+func (cmd *Cmd) AddSubCmd(subCmd *Cmd) error {
+	subCmdName := subCmd.Name()
+	_, exists := cmd.subCmds[subCmdName]
 	if exists {
 		return fmt.Errorf(
 			"Sub-command with name '%s' already registered with '%s'.",
-			subCommandName, argSet.name)
+			subCmdName, cmd.name)
 	}
 
-	argSet.subCommands[subCommandName] = subArgSet
+	cmd.subCmds[subCmdName] = subCmd
 	return nil
 }
 
-func (argSet *ArgSet) addNamedArg(
+func (cmd *Cmd) addNamedArg(
 	name, short, help, defValStr string, dest interface{}, required bool) {
 	arg := newNamedArg(name, short, help, defValStr, dest, required)
-	argSet.namedArgList = append(argSet.namedArgList, arg)
-	argSet.namedArgMap[name] = arg
-	argSet.namedArgMap[short] = arg
+	cmd.namedArgList = append(cmd.namedArgList, arg)
+	cmd.namedArgMap[name] = arg
+	cmd.namedArgMap[short] = arg
 }
 
-func (argSet *ArgSet) AddIntArg(
+func (cmd *Cmd) AddIntArg(
 	name string, short string, dest *int, def int, required bool, help string) {
-	argSet.addNamedArg(name, short, help, fmt.Sprintf("%d", def), dest, required)
+	cmd.addNamedArg(name, short, help, fmt.Sprintf("%d", def), dest, required)
 	*dest = def
 }
 
-func (argSet *ArgSet) AddInt64Arg(
+func (cmd *Cmd) AddInt64Arg(
 	name string, short string, dest *int64, def int64, required bool, help string) {
-	argSet.addNamedArg(name, short, help, fmt.Sprintf("%d", def), dest, required)
+	cmd.addNamedArg(name, short, help, fmt.Sprintf("%d", def), dest, required)
 	*dest = def
 }
 
-func (argSet *ArgSet) AddUIntArg(
+func (cmd *Cmd) AddUIntArg(
 	name string, short string, dest *uint, def uint, required bool, help string) {
-	argSet.addNamedArg(name, short, help, fmt.Sprintf("%d", def), dest, required)
+	cmd.addNamedArg(name, short, help, fmt.Sprintf("%d", def), dest, required)
 	*dest = def
 }
 
-func (argSet *ArgSet) AddUInt64Arg(
+func (cmd *Cmd) AddUInt64Arg(
 	name string, short string, dest *uint64, def uint64, required bool, help string) {
-	argSet.addNamedArg(name, short, help, fmt.Sprintf("%d", def), dest, required)
+	cmd.addNamedArg(name, short, help, fmt.Sprintf("%d", def), dest, required)
 	*dest = def
 }
 
-func (argSet *ArgSet) AddFloat64Arg(
+func (cmd *Cmd) AddFloat64Arg(
 	name string, short string, dest *float64, def float64, required bool, help string) {
-	argSet.addNamedArg(name, short, help, fmt.Sprintf("%f", def), dest, required)
+	cmd.addNamedArg(name, short, help, fmt.Sprintf("%f", def), dest, required)
 	*dest = def
 }
 
-func (argSet *ArgSet) AddBoolArg(
+func (cmd *Cmd) AddBoolArg(
 	name string, short string, dest *bool, def bool, required bool, help string) {
-	argSet.addNamedArg(name, short, help, fmt.Sprintf("%t", def), dest, required)
+	cmd.addNamedArg(name, short, help, fmt.Sprintf("%t", def), dest, required)
 	*dest = def
 }
 
-func (argSet *ArgSet) AddStringArg(
+func (cmd *Cmd) AddStringArg(
 	name string, short string, dest *string, def string, required bool, help string) {
-	argSet.addNamedArg(name, short, help, fmt.Sprintf("%s", def), dest, required)
+	cmd.addNamedArg(name, short, help, fmt.Sprintf("%s", def), dest, required)
 	*dest = def
 }
 
-func (argSet *ArgSet) Parse(arguments []string) ([]string, error) {
-	processedCmds := []string{argSet.name}
+func (cmd *Cmd) Parse(arguments []string) ([]string, error) {
+	processedCmds := []string{cmd.name}
 
 	if len(arguments) > 0 {
-		subCommand, exists := argSet.subCommands[arguments[0]]
+		subCmd, exists := cmd.subCmds[arguments[0]]
 		if exists {
-			subCommandList, err := subCommand.Parse(arguments[1:])
-			return append(subCommandList, argSet.name), err
+			subCmdList, err := subCmd.Parse(arguments[1:])
+			return append(subCmdList, cmd.name), err
 		}
 	}
 
@@ -274,7 +274,7 @@ func (argSet *ArgSet) Parse(arguments []string) ([]string, error) {
 				// The stripped argument is the name if there is no "=".
 				name := stripped
 				var exists bool
-				arg, exists = argSet.namedArgMap[name]
+				arg, exists = cmd.namedArgMap[name]
 				if !exists {
 					err := fmt.Errorf("Unknown argument '%s'.", name)
 					return processedCmds, err
@@ -306,7 +306,7 @@ func (argSet *ArgSet) Parse(arguments []string) ([]string, error) {
 				name := stripped[0:indexOfEqual]
 				valStr = stripped[indexOfEqual + 1:]
 				var exists bool
-				arg, exists = argSet.namedArgMap[name]
+				arg, exists = cmd.namedArgMap[name]
 				if !exists {
 					err := fmt.Errorf("Unknown argument '%s'.", name)
 					return processedCmds, err
@@ -386,42 +386,42 @@ func (argSet *ArgSet) Parse(arguments []string) ([]string, error) {
 			}
 		} else {
 			// This is not a named argument.
-			argSet.argList = append(argSet.argList, Arg(argument))
+			cmd.argList = append(cmd.argList, Arg(argument))
 		}
 	}
 
-	for _, arg := range argSet.namedArgList {
+	for _, arg := range cmd.namedArgList {
 		if arg.required && !arg.set {
 			err := fmt.Errorf("Required argument '%s' not specified.", arg.name)
 			return processedCmds, err
 		}
 	}
 
-	if argSet.shouldRenderHelp {
-		argSet.RenderHelp()
+	if cmd.shouldRenderHelp {
+		cmd.RenderHelp()
 		os.Exit(0)
 	}
 
 	return processedCmds, nil
 }
 
-func (argSet *ArgSet) Args() []Arg {
-	return argSet.argList
+func (cmd *Cmd) Args() []Arg {
+	return cmd.argList
 }
 
-func (argSet *ArgSet) Clear() error {
-	argSet.argList = nil
+func (cmd *Cmd) Clear() error {
+	cmd.argList = nil
 
-	for _, namedArg := range argSet.namedArgList {
+	for _, namedArg := range cmd.namedArgList {
 		err := namedArg.Reset()
 		if err != nil {
 			err = fmt.Errorf(
-				"Unable to clear arg set '%s'.\n%s'", argSet.name, err.Error())
+				"Unable to clear arg set '%s'.\n%s'", cmd.name, err.Error())
 			return err
 		}
 	}
 
-	for _, subCmd := range argSet.subCommands {
+	for _, subCmd := range cmd.subCmds {
 		err := subCmd.Clear()
 		if err != nil {
 			err = fmt.Errorf(
@@ -434,14 +434,14 @@ func (argSet *ArgSet) Clear() error {
 	return nil
 }
 
-func (argSet *ArgSet) ShouldRenderHelp() bool {
-	return argSet.shouldRenderHelp
+func (cmd *Cmd) ShouldRenderHelp() bool {
+	return cmd.shouldRenderHelp
 }
 
-func (argSet *ArgSet) RenderHelp() {
-	fmt.Printf("%s\n\n", argSet.description)
+func (cmd *Cmd) RenderHelp() {
+	fmt.Printf("%s\n\n", cmd.description)
 	fmt.Printf("Options:\n")
-	for _, arg := range argSet.namedArgList {
+	for _, arg := range cmd.namedArgList {
 		fmt.Printf("  -%s,  --%s\n", arg.short, arg.name)
 		if arg.required {
 			fmt.Printf("     Required argument.\n")
