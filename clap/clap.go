@@ -173,6 +173,10 @@ func (cmd *Cmd) Name() string {
 	return cmd.name
 }
 
+func (cmd *Cmd) Description() string {
+	return cmd.description
+}
+
 func (cmd *Cmd) AddSubCmd(subCmd *Cmd) error {
 	subCmdName := subCmd.Name()
 	_, exists := cmd.subCmds[subCmdName]
