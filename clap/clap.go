@@ -251,7 +251,8 @@ func (cmd *Cmd) Parse(arguments []string) ([]string, error) {
 		}
 	}
 
-	for i := 0; i < len(arguments); i++ {
+	argCount := len(arguments)
+	for i := 0; i < argCount; i++ {
 		argument := arguments[i]
 		if strings.HasPrefix(argument, "-") {
 			// A named argument can be specified in the following ways:
@@ -289,15 +290,25 @@ func (cmd *Cmd) Parse(arguments []string) ([]string, error) {
 				i += 1
 				switch arg.dest.(type)  {
 				default:
+					if i >= argCount {
+						err := fmt.Errorf(
+							"Missing value for argument '%s'.", name)
+						return processedCmds, err
+					}
 					valStr = arguments[i]
 				case *bool:
-					nextArgStr := arguments[i]
-					_, err := strconv.ParseBool(nextArgStr)
-					if err == nil {
-						valStr = nextArgStr
-					} else {
-						i -= 1
+					if i >= argCount {
+						i -= 1;
 						valStr = "true"
+					} else {
+						nextArgStr := arguments[i]
+						_, err := strconv.ParseBool(nextArgStr)
+						if err == nil {
+							valStr = nextArgStr
+						} else {
+							i -= 1
+							valStr = "true"
+						}
 					}
 				}
 			} else if indexOfEqual == 0 {
