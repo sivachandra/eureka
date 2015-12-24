@@ -43,16 +43,16 @@ func TestAbbrevTable(t *testing.T) {
 	if !entry1.HasChildren {
 		t.Errorf("Wrong children description entry for entry wih abrev code 1.")
 	}
-	if len(entry1.Attributes) != 7 {
+	if len(entry1.AttrForms) != 7 {
 		t.Errorf("Wrong number of attributes for entry with abbrev code 1.")
 	} else {
-		if entry1.Attributes[0].Attr != DW_AT_producer {
+		if entry1.AttrForms[0].Attr != DW_AT_producer {
 			t.Errorf("Wrong 0th attr for abbrev code 1.")
 		}
-		if entry1.Attributes[6].Attr != DW_AT_stmt_list {
+		if entry1.AttrForms[6].Attr != DW_AT_stmt_list {
 			t.Errorf("Wrong 6th attr for abbrev code 1.")
 		}
-		if entry1.Attributes[1].Form != DW_FORM_data1 {
+		if entry1.AttrForms[1].Form != DW_FORM_data1 {
 			t.Errorf("Wrong form for 1st attr of entry with abbrev code 1.")
 		}
 	}
@@ -70,16 +70,16 @@ func TestAbbrevTable(t *testing.T) {
 	if entry2.HasChildren {
 		t.Errorf("Wrong children description entry for entry wih abrev code 2.")
 	}
-	if len(entry2.Attributes) != 9 {
+	if len(entry2.AttrForms) != 9 {
 		t.Errorf("Wrong number of attributes for entry with abbrev code 2.")
 	} else {
-		if entry2.Attributes[0].Attr != DW_AT_external {
+		if entry2.AttrForms[0].Attr != DW_AT_external {
 			t.Errorf("Wrong 0th attr for abbrev code 2.")
 		}
-		if entry2.Attributes[6].Attr != DW_AT_high_pc {
+		if entry2.AttrForms[6].Attr != DW_AT_high_pc {
 			t.Errorf("Wrong 6th attr for abbrev code 2.")
 		}
-		if entry2.Attributes[1].Form != DW_FORM_strp {
+		if entry2.AttrForms[1].Form != DW_FORM_strp {
 			t.Errorf("Wrong form for 1st attr of entry with abbrev code 2.")
 		}
 	}
@@ -97,16 +97,16 @@ func TestAbbrevTable(t *testing.T) {
 	if entry3.HasChildren {
 		t.Errorf("Wrong children description entry for entry wih abrev code 3.")
 	}
-	if len(entry3.Attributes) != 3 {
+	if len(entry3.AttrForms) != 3 {
 		t.Errorf("Wrong number of attributes for entry with abbrev code 3.")
 	} else {
-		if entry3.Attributes[0].Attr != DW_AT_byte_size {
+		if entry3.AttrForms[0].Attr != DW_AT_byte_size {
 			t.Errorf("Wrong 0th attr for abbrev code 3.")
 		}
-		if entry3.Attributes[2].Attr != DW_AT_name {
+		if entry3.AttrForms[2].Attr != DW_AT_name {
 			t.Errorf("Wrong 2nd attr for abbrev code 3.")
 		}
-		if entry3.Attributes[1].Form != DW_FORM_data1 {
+		if entry3.AttrForms[1].Form != DW_FORM_data1 {
 			t.Errorf("Wrong form for 1st attr of entry with abbrev code 3.")
 		}
 	}

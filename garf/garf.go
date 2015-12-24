@@ -19,23 +19,23 @@ import (
 	"eureka/utils/leb128"
 )
 
-type AttrFormPair struct {
+type AttrForm struct {
 	Attr DwAt
 	Form DwForm
 }
 
 type AbbrevEntry struct {
-	AbbrevCode uint64
-	Tag DwTag
+	AbbrevCode  uint64
+	Tag         DwTag
 	HasChildren bool
-	Attributes []AttrFormPair
+	AttrForms   []AttrForm
 }
 
 type AbbrevTable map[uint64]AbbrevEntry
 
 type DwFile struct {
-	fileName string
-	elf *golf.ELF
+	fileName    string
+	elf         *golf.ELF
 	abbrevTable AbbrevTable
 }
 
@@ -121,7 +121,7 @@ func (d *DwFile) GetAbbrevTable() (AbbrevTable, error) {
 		entry.AbbrevCode = abbrevCode
 		entry.Tag = DwTag(tag)
 		entry.HasChildren = (hasChildren == DW_CHILDREN_yes)
-		entry.Attributes = make([]AttrFormPair, 0)
+		entry.AttrForms = make([]AttrForm, 0)
 
 		for true {
 			attr, err := leb128.ReadUnsigned(reader)
@@ -144,10 +144,10 @@ func (d *DwFile) GetAbbrevTable() (AbbrevTable, error) {
 				break
 			}
 
-			var pair AttrFormPair
+			var pair AttrForm
 			pair.Attr = DwAt(attr)
 			pair.Form = DwForm(form)
-			entry.Attributes = append(entry.Attributes, pair)
+			entry.AttrForms = append(entry.AttrForms, pair)
 		}
 
 		table[entry.AbbrevCode] = entry
