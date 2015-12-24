@@ -330,6 +330,63 @@ type Section struct {
 	modTime  time.Time
 }
 
+// SectReader is a reader whose view is the section data.
+// It conforms to io.Reader, io.ByteReader and io.Seeker interfaces.
+// A client of this reader should always call the Finish method when
+// done with the reading task.
+type SectReader struct {
+	file *os.File
+	sectOffset uint64
+	s uint64
+	i uint64
+}
+
+func (r *SectReader) Size() uint64 {
+	return r.s
+}
+
+func (r *SectReader) Len() uint64 {
+	if r.i >= r.s {
+		return 0
+	} else {
+		return r.s - r.i
+	}
+}
+
+func (r *SectReader) Read(b []byte) (n int, err error) {
+	n, err = r.file.Read(b)
+	r.i += uint64(n)
+	return
+}
+
+func (r *SectReader) ReadByte() (byte, error) {
+	b := make([]byte, 1)
+	_, err := r.file.Read(b)
+	return b[0], err
+}
+
+func (r *SectReader) Finish() {
+	r.file.Close()
+}
+
+func (r *SectReader) Seek(offset int64, whence int) (int64, error) {
+	var o int64
+	var err error
+
+	switch whence {
+	case 0:
+		o, err = r.file.Seek(int64(r.sectOffset) + offset, 0)
+	case 1:
+		o, err = r.file.Seek(offset, 1)
+	case 2:
+		o, err = r.file.Seek(int64(r.sectOffset + r.s) + offset, 0)
+	}
+
+	o = o - int64(r.sectOffset)
+	r.i = uint64(o)
+	return 0, err
+}
+
 // Returns the header of the section.
 func (section *Section) SectHdr() SectHdr {
 	return section.header
@@ -338,6 +395,45 @@ func (section *Section) SectHdr() SectHdr {
 // Returns the name of the section.
 func (section *Section) Name() string {
 	return section.name
+}
+
+// Returns a reader whose view is the section data.
+func (section *Section) NewSectReader() (*SectReader, error) {
+	fileInfo, err := os.Stat(section.fileName)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to stat '%s'.\n%s", section.fileName, err.Error())
+	}
+
+	if section.modTime.Unix() < fileInfo.ModTime().Unix() {
+		err = fmt.Errorf(
+			"File '%s' modified after loading. Cannot create SectReader for sect '%s'",
+			section.fileName, section.name)
+		return nil, err
+	}
+
+	file, err := os.Open(section.fileName)
+	if err != nil {
+		err = fmt.Errorf(
+			"Unable to open '%s' to create SectReader for section '%s'.\n%s",
+			section.fileName, section.name, err.Error())
+		return nil, err
+	}
+
+	offset := section.header.Offset()
+	_, err = file.Seek(int64(offset), 0)
+	if err != nil {
+		err = fmt.Errorf(
+			"Unable to seek to section '%s' in '%s' to create SectReader.\n%s",
+			section.name, file.Name(), err.Error())
+		return nil, err
+	}
+
+	r := new(SectReader)
+	r.file = file
+	r.sectOffset = offset
+	r.s = section.header.Size()
+	r.i = 0
+	return r, nil
 }
 
 // Returns the section data.

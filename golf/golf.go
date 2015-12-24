@@ -10,6 +10,7 @@
 package golf
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 )
@@ -27,6 +28,11 @@ type ELF struct {
 // Returns the ELF header.
 func (elf *ELF) Header() ELFHeader {
 	return elf.header
+}
+
+// Returns the endianess of the data in the ELF file.
+func (elf *ELF) Endianess() binary.ByteOrder {
+	return endianMap[elf.Header().ELFIdent().Endianess]
 }
 
 // Returns the program header table.
