@@ -21,21 +21,21 @@ func ReadSigned(r io.ByteReader) (int64, error) {
 
 	for true {
 		b, err := r.ReadByte()
-		if (err != nil) {
+		if err != nil {
 			return 0, fmt.Errorf("Error reading signed LEB128.\n%s", err.Error())
 		}
 
-		res |= uint64(b & 0x7f) << shift
+		res |= uint64(b&0x7f) << shift
 
 		lastByte = b
 		shift += 7
 
-		if (0x80 & b == 0) {
+		if 0x80&b == 0 {
 			break
 		}
 	}
 
-	if shift < 64 && (lastByte & 0x40 != 0) {
+	if shift < 64 && (lastByte&0x40 != 0) {
 		res |= 0xFFFFFFFFFFFFFFFF << shift
 	}
 
@@ -48,13 +48,13 @@ func ReadUnsigned(r io.ByteReader) (uint64, error) {
 
 	for true {
 		b, err := r.ReadByte()
-		if (err != nil) {
+		if err != nil {
 			return 0, fmt.Errorf("Error reading unsigned LEB128.\n%s", err.Error())
 		}
 
-		res |= uint64(b & 0x7f) << shift
+		res |= uint64(b&0x7f) << shift
 
-		if (0x80 & b == 0) {
+		if 0x80&b == 0 {
 			break
 		}
 

@@ -335,10 +335,10 @@ type Section struct {
 // A client of this reader should always call the Finish method when
 // done with the reading task.
 type SectReader struct {
-	file *os.File
+	file       *os.File
 	sectOffset uint64
-	s uint64
-	i uint64
+	s          uint64
+	i          uint64
 }
 
 func (r *SectReader) Size() uint64 {
@@ -375,11 +375,11 @@ func (r *SectReader) Seek(offset int64, whence int) (int64, error) {
 
 	switch whence {
 	case 0:
-		o, err = r.file.Seek(int64(r.sectOffset) + offset, 0)
+		o, err = r.file.Seek(int64(r.sectOffset)+offset, 0)
 	case 1:
 		o, err = r.file.Seek(offset, 1)
 	case 2:
-		o, err = r.file.Seek(int64(r.sectOffset + r.s) + offset, 0)
+		o, err = r.file.Seek(int64(r.sectOffset+r.s)+offset, 0)
 	}
 
 	o = o - int64(r.sectOffset)
