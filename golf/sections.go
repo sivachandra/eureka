@@ -361,7 +361,10 @@ func (r *SectReader) Read(b []byte) (n int, err error) {
 
 func (r *SectReader) ReadByte() (byte, error) {
 	b := make([]byte, 1)
-	_, err := r.file.Read(b)
+
+	n, err := r.file.Read(b)
+	r.i += uint64(n)
+
 	return b[0], err
 }
 

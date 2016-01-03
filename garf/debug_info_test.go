@@ -131,6 +131,10 @@ func TestDebugInfoSingleCU(t *testing.T) {
 				t.Errorf("Unexpected value for attr DW_AT_decl_line of child DIE.")
 			}
 		case DW_AT_type:
+			val := a.Value.(*DIE)
+			if val != die.Children[1] {
+				t.Errorf("Incorrect reference DIE linking.")
+			}
 		case DW_AT_low_pc:
 			val := a.Value.(uint64)
 			if val != 0x4004ed {

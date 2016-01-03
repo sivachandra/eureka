@@ -51,6 +51,9 @@ type DIE struct {
 	Attributes []Attribute
 	Parent     *DIE
 	Children   []*DIE
+
+	debugInfoOffsetStart uint64
+	debugInfoOffsetEnd   uint64
 }
 
 type DwUnit struct {
@@ -121,6 +124,8 @@ func LoadDwData(fileName string) (*DwData, error) {
 		err = fmt.Errorf("Error loading ELF info from '%s'.\n%s", fileName, err.Error())
 		return nil, err
 	}
+
+	dwData.dieMap = make(map[uint64]*DIE)
 
 	return dwData, nil
 }
@@ -426,6 +431,15 @@ func (d *DwData) readDIETree(u *DwUnit, offset uint64) (*DIE, error) {
 
 func (d *DwData) readDIETreeHelper(
 	u *DwUnit, r *golf.SectReader, en binary.ByteOrder, parent *DIE) (*DIE, error) {
+	debugInfoOffset := r.Size() - r.Len()
+	die, exists := d.dieMap[debugInfoOffset]
+	if exists {
+		die.Parent = parent
+		r.Seek(int64(die.debugInfoOffsetEnd), 0)
+
+		return die, nil
+	}
+
 	abrrevTable, err := d.AbbrevTable()
 	if err != nil {
 		err = fmt.Errorf("Error getting abbrev table while reading a DIE tree.", err)
@@ -457,10 +471,11 @@ func (d *DwData) readDIETreeHelper(
 		attributes = append(attributes, attr)
 	}
 
-	die := new(DIE)
+	die = new(DIE)
 	die.Tag = abbrevEntry.Tag
 	die.Parent = parent
 	die.Attributes = attributes
+	die.debugInfoOffsetStart = debugInfoOffset
 
 	for abbrevEntry.HasChildren {
 		childDie, err := d.readDIETreeHelper(u, r, en, die)
@@ -477,6 +492,8 @@ func (d *DwData) readDIETreeHelper(
 
 		die.Children = append(die.Children, childDie)
 	}
+	die.debugInfoOffsetEnd = r.Size() - r.Len()
 
+	d.dieMap[debugInfoOffset] = die
 	return die, nil
 }
