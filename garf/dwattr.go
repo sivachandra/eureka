@@ -36,6 +36,8 @@ func (d *DwData) readAttr(
 		fallthrough
 	case DW_AT_comp_dir:
 		fallthrough
+	case DW_AT_linkage_name:
+		fallthrough
 	case DW_AT_name:
 		attr.Value, err = d.readAttrStr(u, r, form, en)
 	case DW_AT_language:
@@ -53,6 +55,8 @@ func (d *DwData) readAttr(
 		fallthrough
 	case DW_AT_decl_line:
 		attr.Value, err = d.readAttrUint32(u, r, form, en)
+	case DW_AT_sibling:
+		fallthrough
 	case DW_AT_type:
 		attr.Value, err = d.readAttrRef(u, r, form, en)
 	case DW_AT_frame_base:

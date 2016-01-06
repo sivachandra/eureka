@@ -13,13 +13,15 @@ import (
 )
 
 func TestAbbrevTable(t *testing.T) {
-	dwData, err := LoadDwData("test_data/linux_x86_64.exe")
+	dwData, err := LoadDwData("test_data/single_cu_linux_x86_64.exe")
 	if err != nil {
 		t.Errorf("Error loading DWARF from file.\n%s", err.Error())
 		return
 	}
 
-	abbrevTable, err := dwData.AbbrevTable()
+	// We will just fetch the abbrev table at offset 0 as the input ELF file
+	// has only 1 CU.
+	abbrevTable, err := dwData.AbbrevTable(0)
 	if err != nil {
 		t.Errorf("Error loading abbrev table.\n", err.Error())
 		return

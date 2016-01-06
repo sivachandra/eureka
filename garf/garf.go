@@ -10,7 +10,6 @@
 package garf
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 )
@@ -82,10 +81,12 @@ type DwUnit struct {
 	AddressSize byte
 
 	// Offset into the .debug_info section at which the data for
-	// DIE tree of this unit begins.
+	// DIE tree of this unit begins. It is NOT the offset at which the
+	// header for this unit begins.
 	DebugInfoOffset uint64
 
-	// The complete DIE tree of this unit.
+	// The complete DIE tree of this unit. Will be nil until a call to the
+	// DIETree method.
 	dieTree *DIE
 }
 
@@ -138,17 +139,7 @@ func (d *DwData) FileName() string {
 	return d.fileName
 }
 
-func (d *DwData) formatError(msg string, err error) error {
-	m := fmt.Sprintf("[%s] %s", d.fileName, msg)
-
-	if err != nil {
-		m = fmt.Sprintf("%s\n[%s] %s", m, d.fileName, err.Error())
-	}
-
-	return fmt.Errorf("%s", m)
-}
-
-func (d *DwData) AbbrevTable() (AbbrevTable, error) {
+func (d *DwData) AbbrevTable(offset uint64) (AbbrevTable, error) {
 	if d.abbrevTable != nil {
 		return d.abbrevTable, nil
 	}
@@ -158,23 +149,27 @@ func (d *DwData) AbbrevTable() (AbbrevTable, error) {
 	sectMap := d.elf.SectMap()
 	debugAbbrevSections, exists := sectMap[".debug_abbrev"]
 	if !exists {
-		return nil, d.formatError(".debug_abbrev section is not present.", nil)
+		return nil, fmt.Errorf(".debug_abbrev section is not present.", nil)
 	}
 
 	if len(debugAbbrevSections) > 1 {
-		return nil, d.formatError("More than one .debug_abbrev sections.", nil)
+		return nil, fmt.Errorf("More than one .debug_abbrev sections.", nil)
 	}
 
-	debugAbbrevData, err := debugAbbrevSections[0].RawData()
+	reader, err := debugAbbrevSections[0].NewSectReader()
 	if err != nil {
-		return nil, d.formatError("Error fetching .debug_abbrev data.", err)
+		return nil, fmt.Errorf("Error fetching .debug_abbrev reader.", err)
 	}
 
-	reader := bytes.NewReader(debugAbbrevData)
+	_, err = reader.Seek(int64(offset), 0)
+	if err != nil {
+		return nil, fmt.Errorf("Error seeking to .debug_abbrev offset.")
+	}
+
 	for true {
 		abbrevCode, err := leb128.ReadUnsigned(reader)
 		if err != nil {
-			return nil, d.formatError("Error reading abbreviation code.", nil)
+			return nil, fmt.Errorf("Error reading abbreviation code.", nil)
 		}
 		if abbrevCode == NullAbbrevEntry {
 			break
@@ -183,7 +178,7 @@ func (d *DwData) AbbrevTable() (AbbrevTable, error) {
 		tag, err := leb128.ReadUnsigned(reader)
 		if err != nil {
 			msg := fmt.Sprintf("Error reading tag for abbrev code %d.", abbrevCode)
-			return nil, d.formatError(msg, err)
+			return nil, fmt.Errorf(msg, err)
 		}
 
 		hasChildren, err := reader.ReadByte()
@@ -191,7 +186,7 @@ func (d *DwData) AbbrevTable() (AbbrevTable, error) {
 			msg := fmt.Sprintf(
 				"Error reading child determination entry for abbrev code %d.",
 				abbrevCode)
-			return nil, d.formatError(msg, err)
+			return nil, fmt.Errorf(msg, err)
 		}
 
 		var entry AbbrevEntry
@@ -206,7 +201,7 @@ func (d *DwData) AbbrevTable() (AbbrevTable, error) {
 				msg := fmt.Sprintf(
 					"Error reading an attr name of entry with abbrev code %d.",
 					abbrevCode)
-				return nil, d.formatError(msg, err)
+				return nil, fmt.Errorf(msg, err)
 			}
 
 			form, err := leb128.ReadUnsigned(reader)
@@ -214,7 +209,7 @@ func (d *DwData) AbbrevTable() (AbbrevTable, error) {
 				msg := fmt.Sprintf(
 					"Error reading an attr form of entry with abbrev code %d.",
 					abbrevCode)
-				return nil, d.formatError(msg, err)
+				return nil, fmt.Errorf(msg, err)
 			}
 
 			if form == 0 && attr == 0 {
@@ -242,16 +237,16 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 	sectMap := d.elf.SectMap()
 	debugInfoSections, exists := sectMap[".debug_info"]
 	if !exists {
-		return nil, d.formatError(".debug_info section is not present.", nil)
+		return nil, fmt.Errorf(".debug_info section is not present.", nil)
 	}
 
 	if len(debugInfoSections) > 1 {
-		return nil, d.formatError("More than one .debug_info sections.", nil)
+		return nil, fmt.Errorf("More than one .debug_info sections.", nil)
 	}
 
 	reader, err := debugInfoSections[0].NewSectReader()
 	if err != nil {
-		return nil, d.formatError("Error fetching .debug_info section reader.", err)
+		return nil, fmt.Errorf("Error fetching .debug_info section reader.", err)
 	}
 	defer reader.Finish()
 
@@ -266,9 +261,11 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 		var format DwFormat
 		var size32 uint32
 
+		headerOffset := reader.Size() - reader.Len()
+
 		err := binary.Read(reader, en, &size32)
 		if err != nil {
-			err = d.formatError(
+			err = fmt.Errorf(
 				"Error reading first 32 bits of length of a unit in .debug_info.",
 				err)
 			return nil, err
@@ -280,7 +277,7 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 
 			err := binary.Read(reader, en, &size64)
 			if err != nil {
-				err = d.formatError(
+				err = fmt.Errorf(
 					"Error reading 64-bit length of a unit in .debug_info.",
 					err)
 				return nil, err
@@ -295,7 +292,7 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 		var version uint16
 		err = binary.Read(reader, en, &version)
 		if err != nil {
-			err = d.formatError("Error reading version of a unit in .debug_info.", err)
+			err = fmt.Errorf("Error reading version of a unit in .debug_info.", err)
 			return nil, err
 		}
 
@@ -303,7 +300,7 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 		if version >= 5 {
 			err = binary.Read(reader, en, &unitType)
 			if err != nil {
-				err = d.formatError(
+				err = fmt.Errorf(
 					"Error reading unit type of a unit in .debug_info.", err)
 				return nil, err
 			}
@@ -314,7 +311,7 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 			var offset uint32
 			err = binary.Read(reader, en, &offset)
 			if err != nil {
-				err = d.formatError(
+				err = fmt.Errorf(
 					"Error reading 32-bit debug abbrev offset of a unit.", err)
 				return nil, err
 			}
@@ -323,7 +320,7 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 		} else {
 			err = binary.Read(reader, en, &debugAbbrevOffset)
 			if err != nil {
-				err = d.formatError(
+				err = fmt.Errorf(
 					"Error reading 64-bit debug abbrev offset of a unit.", err)
 				return nil, err
 			}
@@ -332,7 +329,7 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 		var addrSize byte
 		err = binary.Read(reader, en, &addrSize)
 		if err != nil {
-			err = d.formatError(
+			err = fmt.Errorf(
 				"Error reading address size from a unit header in .debug_info.",
 				err)
 			return nil, err
@@ -357,7 +354,7 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 			cu.AddressSize = addrSize
 			cu.DebugInfoOffset = reader.Size() - reader.Len()
 			d.compUnits = append(d.compUnits, cu)
-			reader.Seek(int64(cu.Size+cu.DebugInfoOffset), 0)
+			reader.Seek(int64(cu.Size+headerOffset), 0)
 		}
 	}
 
@@ -372,16 +369,16 @@ func (d *DwData) DebugStr() (DebugStrMap, error) {
 	sectMap := d.elf.SectMap()
 	debugStrSections, exists := sectMap[".debug_str"]
 	if !exists {
-		return nil, d.formatError(".debug_str section is not present.", nil)
+		return nil, fmt.Errorf(".debug_str section is not present.", nil)
 	}
 
 	if len(debugStrSections) > 1 {
-		return nil, d.formatError("More than one .debug_str sections.", nil)
+		return nil, fmt.Errorf("More than one .debug_str sections.", nil)
 	}
 
 	debugStrData, err := debugStrSections[0].RawData()
 	if err != nil {
-		return nil, d.formatError("Error fetching .debug_str data.", err)
+		return nil, fmt.Errorf("Error fetching .debug_str data.", err)
 	}
 
 	var str []uint8
@@ -406,16 +403,16 @@ func (d *DwData) readDIETree(u *DwUnit, offset uint64) (*DIE, error) {
 	sectMap := d.elf.SectMap()
 	debugInfoSections, exists := sectMap[".debug_info"]
 	if !exists {
-		return nil, d.formatError(".debug_info section is not present.", nil)
+		return nil, fmt.Errorf(".debug_info section is not present.", nil)
 	}
 
 	if len(debugInfoSections) > 1 {
-		return nil, d.formatError("More than one .debug_info sections.", nil)
+		return nil, fmt.Errorf("More than one .debug_info sections.", nil)
 	}
 
 	reader, err := debugInfoSections[0].NewSectReader()
 	if err != nil {
-		return nil, d.formatError("Error fetching .debug_info section reader.", err)
+		return nil, fmt.Errorf("Error fetching .debug_info section reader.", err)
 	}
 	defer reader.Finish()
 
@@ -440,7 +437,7 @@ func (d *DwData) readDIETreeHelper(
 		return die, nil
 	}
 
-	abrrevTable, err := d.AbbrevTable()
+	abrrevTable, err := d.AbbrevTable(u.DebugAbbrevOffset)
 	if err != nil {
 		err = fmt.Errorf("Error getting abbrev table while reading a DIE tree.", err)
 		return nil, err

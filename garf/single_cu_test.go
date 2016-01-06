@@ -12,7 +12,7 @@ import (
 )
 
 func TestDebugInfoSingleCU(t *testing.T) {
-	dwData, err := LoadDwData("test_data/linux_x86_64.exe")
+	dwData, err := LoadDwData("test_data/single_cu_linux_x86_64.exe")
 	if err != nil {
 		t.Errorf("Error loading DWARF from file.\n%s", err.Error())
 		return
