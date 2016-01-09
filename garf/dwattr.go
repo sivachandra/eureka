@@ -57,6 +57,10 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrUint32(u, r, form, en)
 	case DW_AT_sibling:
 		fallthrough
+	case DW_AT_abstract_origin:
+		fallthrough
+	case DW_AT_specification:
+		fallthrough
 	case DW_AT_type:
 		attr.Value, err = d.readAttrRef(u, r, form, en)
 	case DW_AT_frame_base:
@@ -68,6 +72,8 @@ func (d *DwData) readAttr(
 	case DW_AT_encoding:
 		attr.Value, err = r.ReadByte()
 		attr.Value = DwAte(attr.Value.(byte))
+	case DW_AT_ranges:
+		attr.Value, err = d.readAttrUint64(u, r, form, en)
 	default:
 		attr.Value, err = d.readAttrByteSlice(u, r, form, en)
 	}
