@@ -47,7 +47,7 @@ type Attribute struct {
 
 type DIE struct {
 	Tag        DwTag
-	Attributes []Attribute
+	Attributes map[DwAt]Attribute
 	Parent     *DIE
 	Children   []*DIE
 
@@ -458,14 +458,14 @@ func (d *DwData) readDIETreeHelper(
 		return nil, fmt.Errorf("Invalid abbrev code for a DIE.", nil)
 	}
 
-	attributes := make([]Attribute, 0)
+	attributes := make(map[DwAt]Attribute)
 	for _, attrForm := range abbrevEntry.AttrForms {
 		attr, err := d.readAttr(u, r, attrForm.Name, attrForm.Form, en)
 		if err != nil {
 			err = fmt.Errorf("Error reading an attribute value for a DIE.\n%s", err)
 			return nil, err
 		}
-		attributes = append(attributes, attr)
+		attributes[attr.Name] = attr
 	}
 
 	die = new(DIE)
