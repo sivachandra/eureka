@@ -15,6 +15,8 @@ type DwForm uint16
 type DwLang uint16
 type DwUnitType uint8
 type DwAte uint8
+type DwLnOpcode uint8
+type DwLnFormat uint16
 
 const (
 	NullAbbrevEntry = uint64(0)
@@ -402,4 +404,38 @@ const (
 
 	DW_ATE_lo_user = DwAte(0x80)
 	DW_ATE_hi_user = DwAte(0xff)
+)
+
+const (
+	DW_LNS_copy               = DwLnOpcode(0x01)
+	DW_LNS_advance_pc         = DwLnOpcode(0x02)
+	DW_LNS_advance_line       = DwLnOpcode(0x03)
+	DW_LNS_set_file           = DwLnOpcode(0x04)
+	DW_LNS_set_column         = DwLnOpcode(0x05)
+	DW_LNS_negate_stmt        = DwLnOpcode(0x06)
+	DW_LNS_set_basic_block    = DwLnOpcode(0x07)
+	DW_LNS_const_add_pc       = DwLnOpcode(0x08)
+	DW_LNS_fixed_advance_pc   = DwLnOpcode(0x09)
+	DW_LNS_set_prologue_end   = DwLnOpcode(0x0a)
+	DW_LNS_set_epilogue_begin = DwLnOpcode(0x0b)
+	DW_LNS_set_isa            = DwLnOpcode(0x0c)
+)
+
+const (
+	DW_LNE_end_sequence      = DwLnOpcode(0x01)
+	DW_LNE_set_address       = DwLnOpcode(0x02)
+	DW_LNE_define_file       = DwLnOpcode(0x03)
+	DW_LNE_set_discriminator = DwLnOpcode(0x04)
+	DW_LNE_lo_user           = DwLnOpcode(0x80)
+	DW_LNE_hi_user           = DwLnOpcode(0xff)
+)
+
+const (
+	DW_LNCT_path            = DwLnFormat(0x0001)
+	DW_LNCT_directory_index = DwLnFormat(0x0002)
+	DW_LNCT_timestamp       = DwLnFormat(0x0003)
+	DW_LNCT_size            = DwLnFormat(0x0004)
+	DW_LNCT_MD5             = DwLnFormat(0x0005)
+	DW_LNCT_lo_user         = DwLnFormat(0x2000)
+	DW_LNCT_hi_user         = DwLnFormat(0x3fff)
 )

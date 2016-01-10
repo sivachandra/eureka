@@ -95,3 +95,60 @@ func (n LEB128) AsUnsigned() (uint64, error) {
 	r := bytes.NewReader([]byte(n))
 	return ReadUnsigned(r)
 }
+
+func Encode(v interface{}) (LEB128, error) {
+	var valU64 uint64
+	n := byte(0)
+	s := false
+
+	switch v.(type) {
+	case int8:
+		valU64 = uint64(int64(v.(int8)))
+		n = 2
+		s = true
+	case uint8:
+		valU64 = uint64(v.(uint8))
+		n = 2
+	case int16:
+		valU64 = uint64(int64(v.(int16)))
+		n = 3
+		s = true
+	case uint16:
+		valU64 = uint64(v.(uint16))
+		n = 3
+	case int32:
+		valU64 = uint64(int64(v.(int32)))
+		n = 5
+		s = true
+	case uint32:
+		valU64 = uint64(v.(uint32))
+		n = 5
+	case int64:
+		valU64 = uint64(v.(int64))
+		n = 10
+		s = true
+	case uint64:
+		valU64 = v.(uint64)
+		n = 10
+	default:
+		return nil, fmt.Errorf("Cannot encode value into an LEB128 number.")
+	}
+
+	out := make([]byte, 0)
+	for k := byte(1); k <= n; k++ {
+		b := byte(valU64 & 0x7F)
+		if k != n {
+			b |= 0x80
+		}
+
+		if k == 10 && s && b == 1 {
+			// Sign extend the last byte of a b4-bit signed number.
+			b |= 0x7F
+		}
+
+		out = append(out, b)
+		valU64 = valU64 >> 7
+	}
+
+	return LEB128(out), nil
+}

@@ -13,6 +13,11 @@ import (
 	"io"
 )
 
+const (
+	ASCII_NULL = byte(0)
+)
+
+// Read until, but not including the delim entry.
 func ReadUntil(r io.ByteReader, delim byte) ([]byte, error) {
 	var str []byte
 
@@ -31,3 +36,8 @@ func ReadUntil(r io.ByteReader, delim byte) ([]byte, error) {
 	return str, nil
 }
 
+// Read a null terminated string.
+func ReadCString(r io.ByteReader) (string, error) {
+	b, err := ReadUntil(r, ASCII_NULL)
+	return string(b), err
+}

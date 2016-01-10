@@ -51,8 +51,69 @@ type DIE struct {
 	Parent     *DIE
 	Children   []*DIE
 
+	// Offset of the first byte of the contribution of this DIE.
 	debugInfoOffsetStart uint64
-	debugInfoOffsetEnd   uint64
+
+	// Offset of the first byte after the end of the contribution of this DIE.
+	debugInfoOffsetEnd uint64
+}
+
+type LnInfoTimestamp interface {
+}
+
+type LnFileEntry struct {
+	Path      string
+	DirIndex  uint64
+	Size      uint64
+	Timestamp uint64
+	MD5       [16]byte
+}
+
+type DwLnOpcodeType uint8
+
+const (
+	DwLnOpcodeSpecial = DwLnOpcodeType(0x01)
+	DwLnOpcodeStd     = DwLnOpcodeType(0x02)
+	DwLnOpcodeExt     = DwLnOpcodeType(0x03)
+)
+
+type LnInstr struct {
+	// The instruction opcode. Its type (special, standard or extension) is
+	// determined by the OpcodeType field.
+	Opcode DwLnOpcode
+
+	// OpcodeType takes one of DwLnOpcodeSpecial, DwLnOpcodeStd or
+	// DwLnOpcodeExt value.
+	OpcodeType DwLnOpcodeType
+
+	// Note 1: DW_LNS_fixed_advance_pc instruction takes a single usigned
+	// 16-bit operand. That operand will also be stored as an unsigned LEB128
+	// number.
+	//
+	// Note 2: The opcode DW_LNE_define_file which is deprecated in DWARF 5
+	// takes a string operand. There are no known producers which emit this
+	// opcode. Hence, we do not support it here.
+	Operands []leb128.LEB128
+}
+
+type LnInfo struct {
+	Size                uint64
+	Version             uint16
+	AddressSize         uint8
+	SegmentSelectorSize uint8
+
+	Directories []string
+	Files       []LnFileEntry
+
+	minInstrLength  uint8
+	maxOprPerInstr  uint8
+	defaultIsStmt   uint8
+	lineBase        int8
+	lineRange       uint8
+	opcodeBase      uint8
+	operandCountTbl []uint8
+
+	Program []LnInstr
 }
 
 type DwUnit struct {
@@ -88,6 +149,10 @@ type DwUnit struct {
 	// The complete DIE tree of this unit. Will be nil until a call to the
 	// DIETree method.
 	dieTree *DIE
+
+	// The line number program for this unit. Will be nil until a call to the
+	// LnInfo method.
+	lnInfo *LnInfo
 }
 
 func (u DwUnit) DIETree() (*DIE, error) {
@@ -98,6 +163,16 @@ func (u DwUnit) DIETree() (*DIE, error) {
 	var err error
 	u.dieTree, err = u.Parent.readDIETree(&u, u.DebugInfoOffset)
 	return u.dieTree, err
+}
+
+func (u DwUnit) LineNumberInfo() (*LnInfo, error) {
+	if u.lnInfo != nil {
+		return u.lnInfo, nil
+	}
+
+	var err error
+	u.lnInfo, err = u.Parent.readLineNumberInfo(&u)
+	return u.lnInfo, err
 }
 
 type DebugStrMap map[uint64]string

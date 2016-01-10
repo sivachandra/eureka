@@ -35,6 +35,22 @@ func (elf *ELF) Endianess() binary.ByteOrder {
 	return endianMap[elf.Header().ELFIdent().Endianess]
 }
 
+// Returns the address size of the architecture in bytes.
+func (elf *ELF) AddressSize() uint8 {
+	switch elf.Header().Machine() {
+	case MachineX86:
+		return 4
+	case MachineARM:
+		return 4
+	case MachineX86_64:
+		return 8
+	case MachineAArch64:
+		return 8
+	default:
+		return 0
+	}
+}
+
 // Returns the program header table.
 func (elf *ELF) ProgHdrTbl() []SegHdr {
 	return elf.progHdrTbl
