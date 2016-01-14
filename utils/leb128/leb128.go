@@ -10,9 +10,12 @@
 package leb128
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 )
+
+type LEB128 []byte
 
 func ReadSigned(r io.ByteReader) (int64, error) {
 	var res uint64 = 0
@@ -62,4 +65,33 @@ func ReadUnsigned(r io.ByteReader) (uint64, error) {
 	}
 
 	return res, nil
+}
+
+func Read(r io.ByteReader) (LEB128, error) {
+	n := make([]byte, 0)
+
+	for true {
+		b, err := r.ReadByte()
+		if err != nil {
+			return LEB128(nil), err
+		}
+
+		n = append(n, b)
+
+		if b & 0x80 == 0 {
+			break
+		}
+	}
+
+	return n, nil
+}
+
+func (n LEB128) AsSigned() (int64, error) {
+	r := bytes.NewReader([]byte(n))
+	return ReadSigned(r)
+}
+
+func (n LEB128) AsUnsigned() (uint64, error) {
+	r := bytes.NewReader([]byte(n))
+	return ReadUnsigned(r)
 }
