@@ -178,12 +178,12 @@ func (u DwUnit) LineNumberInfo() (*LnInfo, error) {
 type DebugStrMap map[uint64]string
 
 type DwData struct {
-	fileName    string
-	elf         *golf.ELF
-	abbrevTable AbbrevTable
-	debugStrMap DebugStrMap
-	compUnits   []DwUnit
-	typeUnits   []DwUnit
+	fileName       string
+	elf            *golf.ELF
+	abbrevTableMap map[uint64]AbbrevTable
+	debugStrMap    DebugStrMap
+	compUnits      []DwUnit
+	typeUnits      []DwUnit
 
 	// Mapping from offset into .debug_info section to the DIE at that
 	// offset.
@@ -202,6 +202,7 @@ func LoadDwData(fileName string) (*DwData, error) {
 	}
 
 	dwData.dieMap = make(map[uint64]*DIE)
+	dwData.abbrevTableMap = make(map[uint64]AbbrevTable)
 
 	return dwData, nil
 }
@@ -215,11 +216,10 @@ func (d *DwData) FileName() string {
 }
 
 func (d *DwData) AbbrevTable(offset uint64) (AbbrevTable, error) {
-	if d.abbrevTable != nil {
-		return d.abbrevTable, nil
+	abbrevTable, exists := d.abbrevTableMap[offset]
+	if exists {
+		return abbrevTable, nil
 	}
-
-	table := make(AbbrevTable)
 
 	sectMap := d.elf.SectMap()
 	debugAbbrevSections, exists := sectMap[".debug_abbrev"]
@@ -241,6 +241,7 @@ func (d *DwData) AbbrevTable(offset uint64) (AbbrevTable, error) {
 		return nil, fmt.Errorf("Error seeking to .debug_abbrev offset.")
 	}
 
+	table := make(AbbrevTable)
 	for true {
 		abbrevCode, err := leb128.ReadUnsigned(reader)
 		if err != nil {
@@ -300,7 +301,7 @@ func (d *DwData) AbbrevTable(offset uint64) (AbbrevTable, error) {
 		table[entry.AbbrevCode] = entry
 	}
 
-	d.abbrevTable = table
+	d.abbrevTableMap[offset] = table
 	return table, nil
 }
 
@@ -537,7 +538,10 @@ func (d *DwData) readDIETreeHelper(
 	for _, attrForm := range abbrevEntry.AttrForms {
 		attr, err := d.readAttr(u, r, attrForm.Name, attrForm.Form, en)
 		if err != nil {
-			err = fmt.Errorf("Error reading an attribute value for a DIE.\n%s", err)
+			msg := fmt.Sprintf(
+				"Error reading value of attribute %d.\n%s",
+				attrForm.Name, err.Error())
+			err = fmt.Errorf(msg)
 			return nil, err
 		}
 		attributes[attr.Name] = attr

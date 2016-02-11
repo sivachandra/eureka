@@ -65,8 +65,6 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrRef(u, r, form, en)
 	case DW_AT_frame_base:
 		attr.Value, err = d.readAttrByteSlice(u, r, form, en)
-	case DW_AT_GNU_all_call_sites:
-		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_byte_size:
 		attr.Value, err = d.readAttrUint32(u, r, form, en)
 	case DW_AT_encoding:
@@ -74,6 +72,22 @@ func (d *DwData) readAttr(
 		attr.Value = DwAte(attr.Value.(byte))
 	case DW_AT_ranges:
 		attr.Value, err = d.readAttrUint64(u, r, form, en)
+	case DW_AT_location:
+		if form == DW_FORM_sec_offset {
+			attr.Value, err = d.readAttrUint64(u, r, form, en)
+		} else if form == DW_FORM_exprloc {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else {
+			err = fmt.Errorf("Unsupported form %d for DW_AT_Location.", form)
+		}
+	case DW_AT_declaration:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_GNU_tail_call:
+		fallthrough
+	case DW_AT_GNU_all_call_sites:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_GNU_call_site_value:
+		attr.Value, err = d.readAttrByteSlice(u, r, form, en)
 	default:
 		attr.Value, err = d.readAttrByteSlice(u, r, form, en)
 	}

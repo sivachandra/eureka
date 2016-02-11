@@ -68,7 +68,7 @@ func TestLineInfoSingleCU(t *testing.T) {
 		return
 	}
 
-        if len(lnInfo.operandCountTbl) != 12 {
+	if len(lnInfo.operandCountTbl) != 12 {
 		t.Errorf(
 			"Wrong length of operand count table. Expected 12, got %d.",
 			len(lnInfo.operandCountTbl))
@@ -99,6 +99,63 @@ func TestLineInfoSingleCU(t *testing.T) {
 	if len(lnInfo.Program) != 6 {
 		t.Errorf(
 			"Wrong number of instrs in line number program. Expected 6, got %d.",
+			len(lnInfo.Program))
+		return
+	}
+}
+
+func TestLineInfoMultipleCU(t *testing.T) {
+	dwData, err := LoadDwData("test_data/multiple_cu_linux_x86_64.exe")
+	if err != nil {
+		t.Errorf("Error loading DWARF from file.\n%s", err.Error())
+		return
+	}
+
+	compUnits, err := dwData.CompUnits()
+	if err != nil {
+		t.Errorf("Error reading comp units.\n%s", err.Error())
+		return
+	}
+	if len(compUnits) != 3 {
+		t.Errorf("Wrong number of comp units: %d", len(compUnits))
+		return
+	}
+
+	lnInfo, err := compUnits[0].LineNumberInfo()
+	if err != nil {
+		t.Errorf("Error getting comp unit 0 line number info.\n%s", err.Error())
+		return
+	}
+
+	if len(lnInfo.Program) != 7 {
+		t.Errorf(
+			"Wrong number of instrs in line number program of comp unit 0.",
+			len(lnInfo.Program))
+		return
+	}
+
+	lnInfo, err = compUnits[1].LineNumberInfo()
+	if err != nil {
+		t.Errorf("Error getting comp unit 1 line number info.\n%s", err.Error())
+		return
+	}
+
+	if len(lnInfo.Program) != 7 {
+		t.Errorf(
+			"Wrong number of instrs in line number program of comp unit 1.",
+			len(lnInfo.Program))
+		return
+	}
+
+	lnInfo, err = compUnits[2].LineNumberInfo()
+	if err != nil {
+		t.Errorf("Error getting comp unit 2 line number info.\n%s", err.Error())
+		return
+	}
+
+	if len(lnInfo.Program) != 6 {
+		t.Errorf(
+			"Wrong number of instrs in line number program of comp unit 2.",
 			len(lnInfo.Program))
 		return
 	}

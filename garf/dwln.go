@@ -248,7 +248,7 @@ func (d *DwData) readLineNumberInfo(u *DwUnit) (*LnInfo, error) {
 	}
 
 	// Read the program until the end of the line info for the unit.
-	for initLen - sectReader.Len() < lnInfo.Size {
+	for initLen-sectReader.Len() < lnInfo.Size {
 		b, err := sectReader.ReadByte()
 		if err != nil {
 			err = fmt.Errorf(

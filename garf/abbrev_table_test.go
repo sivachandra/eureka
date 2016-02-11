@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func TestAbbrevTable(t *testing.T) {
+func TestSingleCUAbbrevTable(t *testing.T) {
 	dwData, err := LoadDwData("test_data/single_cu_linux_x86_64.exe")
 	if err != nil {
 		t.Errorf("Error loading DWARF from file.\n%s", err.Error())
@@ -111,5 +111,64 @@ func TestAbbrevTable(t *testing.T) {
 		if entry3.AttrForms[1].Form != DW_FORM_data1 {
 			t.Errorf("Wrong form for 1st attr of entry with abbrev code 3.")
 		}
+	}
+}
+
+func TestMultipleCUAbbrevTable(t *testing.T) {
+	dwData, err := LoadDwData("test_data/multiple_cu_linux_x86_64.exe")
+	if err != nil {
+		t.Errorf("Error loading DWARF from file.\n%s", err.Error())
+		return
+	}
+
+	abbrevTable1, err := dwData.AbbrevTable(0)
+	if err != nil {
+		t.Errorf("Error loading abbrev table.\n", err.Error())
+		return
+	}
+
+	if len(abbrevTable1) != 11 {
+		t.Errorf(
+			"Incorrect length of abbrev table. Expected 11, found %d",
+			len(abbrevTable1))
+		return
+	}
+
+	entry, exists := abbrevTable1[2]
+	if !exists {
+		t.Errorf("Entry with abbrev code 2 is missing.")
+	}
+
+	if len(entry.AttrForms) != 10 {
+		t.Errorf(
+			"Wrong number of attributes for entry with abbrev code 2: %d.",
+			len(entry.AttrForms))
+		return
+	}
+
+	abbrevTable2, err := dwData.AbbrevTable(0x9d)
+	if err != nil {
+		t.Errorf("Error loading abbrev table.\n", err.Error())
+		return
+	}
+
+	if len(abbrevTable2) != 8 {
+		t.Errorf(
+			"Incorrect length of abbrev table. Expected 8, found %d",
+			len(abbrevTable2))
+		return
+	}
+
+	abbrevTable3, err := dwData.AbbrevTable(0x118)
+	if err != nil {
+		t.Errorf("Error loading abbrev table.\n", err.Error())
+		return
+	}
+
+	if len(abbrevTable3) != 4 {
+		t.Errorf(
+			"Incorrect length of abbrev table. Expected 8, found %d",
+			len(abbrevTable3))
+		return
 	}
 }

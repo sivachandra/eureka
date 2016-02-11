@@ -28,13 +28,33 @@ func TestDebugInfoMultipleCU(t *testing.T) {
 		return
 	}
 
-	die, err := compUnits[2].DIETree()
+	die, err := compUnits[0].DIETree()
+	if err != nil {
+		t.Errorf("Error reading DIE tree of comp unit 0.\n%s", err.Error())
+		return
+	}
+
+	if die.Tag != DW_TAG_compile_unit {
+		t.Errorf("Wrong DIE tag for comp unit 0.")
+	}
+
+	die, err = compUnits[1].DIETree()
+	if err != nil {
+		t.Errorf("Error reading DIE tree of comp unit 1.\n%s", err.Error())
+		return
+	}
+
+	if die.Tag != DW_TAG_compile_unit {
+		t.Errorf("Wrong DIE tag for comp unit 1.")
+	}
+
+	die, err = compUnits[2].DIETree()
 	if err != nil {
 		t.Errorf("Error reading DIE tree of comp unit 2.\n%s", err.Error())
 		return
 	}
 
 	if die.Tag != DW_TAG_compile_unit {
-		t.Errorf("Wrong DIE tag.")
+		t.Errorf("Wrong DIE tag for comp unit 2.")
 	}
 }
