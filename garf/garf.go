@@ -10,6 +10,7 @@
 package garf
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 )
@@ -231,7 +232,7 @@ func (d *DwData) AbbrevTable(offset uint64) (AbbrevTable, error) {
 		return nil, fmt.Errorf("More than one .debug_abbrev sections.", nil)
 	}
 
-	reader, err := debugAbbrevSections[0].NewSectReader()
+	reader, err := debugAbbrevSections[0].NewReader()
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching .debug_abbrev reader.", err)
 	}
@@ -320,11 +321,10 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 		return nil, fmt.Errorf("More than one .debug_info sections.", nil)
 	}
 
-	reader, err := debugInfoSections[0].NewSectReader()
+	reader, err := debugInfoSections[0].NewReader()
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching .debug_info section reader.", err)
 	}
-	defer reader.Finish()
 
 	d.compUnits = make([]DwUnit, 0)
 	en := d.elf.Endianess()
@@ -337,7 +337,7 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 		var format DwFormat
 		var size32 uint32
 
-		headerOffset := reader.Size() - reader.Len()
+		headerOffset := uint64(reader.Size() - int64(reader.Len()))
 
 		err := binary.Read(reader, en, &size32)
 		if err != nil {
@@ -428,7 +428,7 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 			cu.Version = version
 			cu.DebugAbbrevOffset = debugAbbrevOffset
 			cu.AddressSize = addrSize
-			cu.DebugInfoOffset = reader.Size() - reader.Len()
+			cu.DebugInfoOffset = uint64(reader.Size() - int64(reader.Len()))
 			d.compUnits = append(d.compUnits, cu)
 			reader.Seek(int64(cu.Size+headerOffset), 0)
 		}
@@ -452,7 +452,7 @@ func (d *DwData) DebugStr() (DebugStrMap, error) {
 		return nil, fmt.Errorf("More than one .debug_str sections.", nil)
 	}
 
-	debugStrData, err := debugStrSections[0].RawData()
+	debugStrData, err := debugStrSections[0].Data()
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching .debug_str data.", err)
 	}
@@ -486,11 +486,10 @@ func (d *DwData) readDIETree(u *DwUnit, offset uint64) (*DIE, error) {
 		return nil, fmt.Errorf("More than one .debug_info sections.", nil)
 	}
 
-	reader, err := debugInfoSections[0].NewSectReader()
+	reader, err := debugInfoSections[0].NewReader()
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching .debug_info section reader.", err)
 	}
-	defer reader.Finish()
 
 	_, err = reader.Seek(int64(offset), 0)
 	if err != nil {
@@ -503,8 +502,8 @@ func (d *DwData) readDIETree(u *DwUnit, offset uint64) (*DIE, error) {
 }
 
 func (d *DwData) readDIETreeHelper(
-	u *DwUnit, r *golf.SectReader, en binary.ByteOrder, parent *DIE) (*DIE, error) {
-	debugInfoOffset := r.Size() - r.Len()
+	u *DwUnit, r *bytes.Reader, en binary.ByteOrder, parent *DIE) (*DIE, error) {
+	debugInfoOffset := uint64(r.Size() - int64(r.Len()))
 	die, exists := d.dieMap[debugInfoOffset]
 	if exists {
 		die.Parent = parent
@@ -568,7 +567,7 @@ func (d *DwData) readDIETreeHelper(
 
 		die.Children = append(die.Children, childDie)
 	}
-	die.debugInfoOffsetEnd = r.Size() - r.Len()
+	die.debugInfoOffsetEnd = uint64(r.Size() - int64(r.Len()))
 
 	d.dieMap[debugInfoOffset] = die
 	return die, nil

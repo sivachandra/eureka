@@ -10,19 +10,19 @@
 package garf
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 )
 
 import (
-	"eureka/golf"
 	"eureka/utils"
 	"eureka/utils/leb128"
 )
 
 func (d *DwData) readAttr(
 	u *DwUnit,
-	r *golf.SectReader,
+	r *bytes.Reader,
 	at DwAt,
 	form DwForm,
 	en binary.ByteOrder) (Attribute, error) {
@@ -96,7 +96,7 @@ func (d *DwData) readAttr(
 }
 
 func (d *DwData) readAttrStr(
-	u *DwUnit, r *golf.SectReader, form DwForm, en binary.ByteOrder) (string, error) {
+	u *DwUnit, r *bytes.Reader, form DwForm, en binary.ByteOrder) (string, error) {
 	switch form {
 	case DW_FORM_string:
 		str, err := utils.ReadUntil(r, byte(0))
@@ -144,7 +144,7 @@ func (d *DwData) readAttrStr(
 }
 
 func (d *DwData) readAttrInt16(
-	u *DwUnit, r *golf.SectReader, f DwForm, en binary.ByteOrder) (int16, error) {
+	u *DwUnit, r *bytes.Reader, f DwForm, en binary.ByteOrder) (int16, error) {
 	var err error
 
 	switch f {
@@ -183,7 +183,7 @@ func (d *DwData) readAttrInt16(
 }
 
 func (d *DwData) readAttrInt32(
-	u *DwUnit, r *golf.SectReader, f DwForm, en binary.ByteOrder) (int32, error) {
+	u *DwUnit, r *bytes.Reader, f DwForm, en binary.ByteOrder) (int32, error) {
 	var err error
 
 	switch f {
@@ -231,7 +231,7 @@ func (d *DwData) readAttrInt32(
 }
 
 func (d *DwData) readAttrInt64(
-	u *DwUnit, r *golf.SectReader, f DwForm, en binary.ByteOrder) (int64, error) {
+	u *DwUnit, r *bytes.Reader, f DwForm, en binary.ByteOrder) (int64, error) {
 	var err error
 
 	switch f {
@@ -288,7 +288,7 @@ func (d *DwData) readAttrInt64(
 }
 
 func (d *DwData) readAttrUint16(
-	u *DwUnit, r *golf.SectReader, f DwForm, en binary.ByteOrder) (uint16, error) {
+	u *DwUnit, r *bytes.Reader, f DwForm, en binary.ByteOrder) (uint16, error) {
 	var err error
 
 	switch f {
@@ -327,7 +327,7 @@ func (d *DwData) readAttrUint16(
 }
 
 func (d *DwData) readAttrUint32(
-	u *DwUnit, r *golf.SectReader, f DwForm, en binary.ByteOrder) (uint32, error) {
+	u *DwUnit, r *bytes.Reader, f DwForm, en binary.ByteOrder) (uint32, error) {
 	var err error
 
 	switch f {
@@ -375,7 +375,7 @@ func (d *DwData) readAttrUint32(
 }
 
 func (d *DwData) readAttrUint64(
-	u *DwUnit, r *golf.SectReader, f DwForm, en binary.ByteOrder) (uint64, error) {
+	u *DwUnit, r *bytes.Reader, f DwForm, en binary.ByteOrder) (uint64, error) {
 	var err error
 
 	switch f {
@@ -468,7 +468,7 @@ func (d *DwData) readAttrUint64(
 }
 
 func (d *DwData) readAttrFlag(
-	u *DwUnit, r *golf.SectReader, f DwForm, en binary.ByteOrder) (bool, error) {
+	u *DwUnit, r *bytes.Reader, f DwForm, en binary.ByteOrder) (bool, error) {
 	switch f {
 	case DW_FORM_flag:
 		b, err := r.ReadByte()
@@ -487,7 +487,7 @@ func (d *DwData) readAttrFlag(
 }
 
 func (d *DwData) readAttrRef(
-	u *DwUnit, r *golf.SectReader, f DwForm, en binary.ByteOrder) (*DIE, error) {
+	u *DwUnit, r *bytes.Reader, f DwForm, en binary.ByteOrder) (*DIE, error) {
 	var offset uint64
 	var err error
 
@@ -547,7 +547,7 @@ func (d *DwData) readAttrRef(
 }
 
 func (d *DwData) readAttrByteSlice(
-	u *DwUnit, r *golf.SectReader, f DwForm, en binary.ByteOrder) ([]byte, error) {
+	u *DwUnit, r *bytes.Reader, f DwForm, en binary.ByteOrder) ([]byte, error) {
 	var size uint64
 	var err error
 

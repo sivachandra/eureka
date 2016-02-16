@@ -9,6 +9,7 @@
 package golf
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -325,69 +326,9 @@ func readSectHdrTbl(f *os.File, header ELFHeader) ([]SectHdr, uint32, error) {
 type Section struct {
 	name     string
 	header   SectHdr
-	data     interface{}
+	data     []byte
 	fileName string
 	modTime  time.Time
-}
-
-// SectReader is a reader whose view is the section data.
-// It conforms to io.Reader, io.ByteReader and io.Seeker interfaces.
-// A client of this reader should always call the Finish method when
-// done with the reading task.
-type SectReader struct {
-	file       *os.File
-	sectOffset uint64
-	s          uint64
-	i          uint64
-}
-
-func (r *SectReader) Size() uint64 {
-	return r.s
-}
-
-func (r *SectReader) Len() uint64 {
-	if r.i >= r.s {
-		return 0
-	} else {
-		return r.s - r.i
-	}
-}
-
-func (r *SectReader) Read(b []byte) (n int, err error) {
-	n, err = r.file.Read(b)
-	r.i += uint64(n)
-	return
-}
-
-func (r *SectReader) ReadByte() (byte, error) {
-	b := make([]byte, 1)
-
-	n, err := r.file.Read(b)
-	r.i += uint64(n)
-
-	return b[0], err
-}
-
-func (r *SectReader) Finish() {
-	r.file.Close()
-}
-
-func (r *SectReader) Seek(offset int64, whence int) (int64, error) {
-	var o int64
-	var err error
-
-	switch whence {
-	case 0:
-		o, err = r.file.Seek(int64(r.sectOffset)+offset, 0)
-	case 1:
-		o, err = r.file.Seek(offset, 1)
-	case 2:
-		o, err = r.file.Seek(int64(r.sectOffset+r.s)+offset, 0)
-	}
-
-	o = o - int64(r.sectOffset)
-	r.i = uint64(o)
-	return 0, err
 }
 
 // Returns the header of the section.
@@ -401,53 +342,22 @@ func (section *Section) Name() string {
 }
 
 // Returns a reader whose view is the section data.
-func (section *Section) NewSectReader() (*SectReader, error) {
-	fileInfo, err := os.Stat(section.fileName)
+func (section *Section) NewReader() (*bytes.Reader, error) {
+	data, err := section.Data()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to stat '%s'.\n%s", section.fileName, err.Error())
-	}
-
-	if section.modTime.Unix() < fileInfo.ModTime().Unix() {
 		err = fmt.Errorf(
-			"File '%s' modified after loading. Cannot create SectReader for sect '%s'",
-			section.fileName, section.name)
+			"Unable to read section data before creating section reader.\n%s",
+			err.Error())
 		return nil, err
 	}
 
-	file, err := os.Open(section.fileName)
-	if err != nil {
-		err = fmt.Errorf(
-			"Unable to open '%s' to create SectReader for section '%s'.\n%s",
-			section.fileName, section.name, err.Error())
-		return nil, err
-	}
-
-	offset := section.header.Offset()
-	_, err = file.Seek(int64(offset), 0)
-	if err != nil {
-		err = fmt.Errorf(
-			"Unable to seek to section '%s' in '%s' to create SectReader.\n%s",
-			section.name, file.Name(), err.Error())
-		return nil, err
-	}
-
-	r := new(SectReader)
-	r.file = file
-	r.sectOffset = offset
-	r.s = section.header.Size()
-	r.i = 0
-	return r, nil
+	return bytes.NewReader(data), nil
 }
 
 // Returns the section data.
-// If the section type if SectTypeSymTab or SectTypeDynSym, then the returned
-// data is of type SymTab. If the section is of type SectTypeStrTab, then the
-// returned value is of type StrTab. For all other section types, the returned
-// data is a byte slice ([]byte).
-//
 // The section data is cached in memory. Only the first call to Data reads the
 // section data from memory. All subsequent calls return the cached data.
-func (section *Section) Data(endianess ELFEndianess) (interface{}, error) {
+func (section *Section) Data() ([]byte, error) {
 	fileInfo, err := os.Stat(section.fileName)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to stat '%s'.\n%s", section.fileName, err.Error())
@@ -473,48 +383,6 @@ func (section *Section) Data(endianess ELFEndianess) (interface{}, error) {
 	}
 	defer file.Close()
 
-	switch sectType := section.header.Type(); sectType {
-	case SectTypeSymTab, SectTypeDynSym:
-		section.data, err = readSymTab(file, section.header, endianess)
-	case SectTypeStrTab:
-		section.data, err = readStrTbl(file, section.header)
-	default:
-		section.data, err = section.RawData()
-	}
-	if err != nil {
-		err = fmt.Errorf(
-			"Error reading data for section '%s'.\n%s", section.name, err.Error())
-		return nil, err
-	}
-
-	return section.data, nil
-}
-
-// Return a byte slice of raw data of the section. Unlike section specific
-// formatted data (returned by the Data method), raw data is not cached. It
-// is read from disk with every call to RawData.
-func (section *Section) RawData() ([]byte, error) {
-	fileInfo, err := os.Stat(section.fileName)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to stat '%s'.\n%s", section.fileName, err.Error())
-	}
-
-	if section.modTime.Unix() < fileInfo.ModTime().Unix() {
-		err = fmt.Errorf(
-			"File '%s' modified after loading. Cannot read data for section '%s'",
-			section.fileName, section.name)
-		return nil, err
-	}
-
-	file, err := os.Open(section.fileName)
-	if err != nil {
-		err = fmt.Errorf(
-			"Unable to open '%s' to read raw data for section '%s'.\n%s",
-			section.fileName, section.name, err.Error())
-		return nil, err
-	}
-	defer file.Close()
-
 	_, err = file.Seek(int64(section.header.Offset()), 0)
 	if err != nil {
 		err = fmt.Errorf(
@@ -535,7 +403,8 @@ func (section *Section) RawData() ([]byte, error) {
 		data = append(data, oneByte)
 	}
 
-	return data, nil
+	section.data = data
+	return section.data, nil
 }
 
 func newSection(name string, sectHdr SectHdr, fileName string) (*Section, error) {
@@ -560,45 +429,25 @@ func newSection(name string, sectHdr SectHdr, fileName string) (*Section, error)
 // indeces to strings.
 type StrTbl map[uint32]string
 
-func readStrTbl(file *os.File, strTblSectHdr SectHdr) (StrTbl, error) {
-	_, err := file.Seek(int64(strTblSectHdr.Offset()), 0)
-	if err != nil {
-		err = fmt.Errorf(
-			"Unable to seek to the string table section in '%s'.\n%s",
-			file.Name(), err.Error())
+func BuildStrTbl(data []byte) (StrTbl, error) {
+	// Read the first NULL string
+	if data[0] != 0 {
+		err := fmt.Errorf("First byte in the string table is not NULL.")
 		return nil, err
 	}
 
 	stringMap := make(map[uint32]string)
-	var char uint8
-	// Read the first NULL string
-	err = binary.Read(file, binary.LittleEndian, &char)
-	if err != nil {
-		err = fmt.Errorf(
-			"Error reading the first NULL string in the string table of '%s'.\n%s",
-			file.Name(), err.Error())
-		return nil, err
-	}
-	if char != 0 {
-		err = fmt.Errorf(
-			"First string in the string table of '%s' is not NULL.\n", file.Name())
-		return nil, err
-	}
-	stringMap[uint32(0)] = string(char)
+	stringMap[uint32(0)] = string(byte(0))
 
 	var str []uint8
-	for index := uint32(1); uint64(index) < strTblSectHdr.Size(); index++ {
-		err = binary.Read(file, binary.LittleEndian, &char)
-		if err != nil {
-			err = fmt.Errorf(
-				"Error reading string table from '%s'.\n%s",
-				file.Name(), len(str), err.Error())
-			return nil, err
+	for index, char := range data {
+		if index == 0 {
+			continue
 		}
 
 		str = append(str, char)
 		if char == 0 {
-			stringMap[index-uint32(len(str)-1)] = string(str[0 : len(str)-1])
+			stringMap[uint32(index-(len(str)-1))] = string(str[0 : len(str)-1])
 			if len(str) == 1 {
 				break
 			}
@@ -617,13 +466,22 @@ type SectMap map[string][]*Section
 func readSectMap(f *os.File, sectHdrTbl []SectHdr, sectNameTblIndex uint32) (SectMap, error) {
 	sectMap := make(SectMap, len(sectHdrTbl))
 
-	strTbl, err := readStrTbl(f, sectHdrTbl[sectNameTblIndex])
+	strTblSect, err := newSection("dummy-name", sectHdrTbl[sectNameTblIndex], f.Name())
+	strTblData, err := strTblSect.Data()
 	if err != nil {
 		err = fmt.Errorf(
-			"Error reading section name table from '%s'.\n%s", f.Name(), err.Error())
+			"Error reading string table data from '%s'.\n%s", f.Name(), err.Error())
 		return nil, err
 	}
-	for i, sectHdr := range sectHdrTbl {
+	strTbl, err := BuildStrTbl(strTblData)
+	if err != nil {
+		err = fmt.Errorf(
+			"Unable to build string table from string table data.\n%s",
+			err.Error())
+		return nil, err
+	}
+
+	for _, sectHdr := range sectHdrTbl {
 		sectName := strTbl[sectHdr.NameIndex()]
 		_, exists := sectMap[sectName]
 		if !exists {
@@ -634,9 +492,6 @@ func readSectMap(f *os.File, sectHdrTbl []SectHdr, sectNameTblIndex uint32) (Sec
 			return nil, err
 		}
 
-		if uint32(i) == sectNameTblIndex {
-			section.data = strTbl
-		}
 		sectMap[sectName] = append(sectMap[sectName], section)
 	}
 
@@ -740,26 +595,20 @@ func (symbol *symbol64) SectIndex() uint16 {
 // symbol names) to a slice of symbols with the same name.
 type SymTab map[uint32][]Symbol
 
-func readSymTab(file *os.File, sectHdr SectHdr, endianess ELFEndianess) (SymTab, error) {
-	_, err := file.Seek(int64(sectHdr.Offset()), 0)
-	if err != nil {
-		err = fmt.Errorf(
-			"Unable to seek to the symtab offset in '%s'.\n%s",
-			file.Name(), err.Error())
-		return nil, err
-	}
-
+func BuildSymTab(data []byte, sectHdr SectHdr, endianess ELFEndianess) (SymTab, error) {
+	reader := bytes.NewReader(data)
 	symTab := make(SymTab)
 	var symbol Symbol
 	var i uint64 = 0
 	for ; i < sectHdr.Size(); i += sectHdr.EntrySize() {
+		var err error
 		if sectHdr.Class() == Class32 {
 			sym32 := new(symbol32)
-			err = binary.Read(file, endianMap[endianess], &sym32.diskData)
+			err = binary.Read(reader, endianMap[endianess], &sym32.diskData)
 			symbol = sym32
 		} else {
 			sym64 := new(symbol64)
-			err = binary.Read(file, endianMap[endianess], &sym64.diskData)
+			err = binary.Read(reader, endianMap[endianess], &sym64.diskData)
 			symbol = sym64
 		}
 

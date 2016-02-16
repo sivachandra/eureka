@@ -35,8 +35,8 @@ func TestSections(t *testing.T) {
 
 	sectMap := elf.SectMap()
 	sectNameSect := sectMap[NameSectNameTbl][0]
-	strTblData, err := sectNameSect.Data(elf.Header().ELFIdent().Endianess)
-	strTbl := strTblData.(StrTbl)
+	strTblData, err := sectNameSect.Data()
+	strTbl, err := BuildStrTbl(strTblData)
 	if len(strTbl) != 34 {
 		t.Errorf(
 			"Incorrect entry count in section name table. Expecting 34, found %d.\n",
@@ -45,13 +45,15 @@ func TestSections(t *testing.T) {
 	}
 
 	symTabSect := sectMap[NameSymTab][0]
-	symTab, err := symTabSect.Data(elf.Header().ELFIdent().Endianess)
+	symTabData, err := symTabSect.Data()
+	symTab, err := BuildSymTab(
+		symTabData, symTabSect.SectHdr(), elf.Header().ELFIdent().Endianess)
 	if err != nil {
 		t.Errorf("Unable to read .symtab.\n%s", err.Error())
 		return
 	}
 	symCount := 0
-	for _, symList := range symTab.(SymTab) {
+	for _, symList := range symTab {
 		symCount += len(symList)
 	}
 	if symCount != 69 {
@@ -60,31 +62,33 @@ func TestSections(t *testing.T) {
 	}
 
 	strTblSect := sectMap[NameSymNameTbl][0]
-	strTblData, err = strTblSect.Data(elf.Header().ELFIdent().Endianess)
+	strTblData, err = strTblSect.Data()
 	if err != nil {
 		t.Errorf("Unable to read .strtab.\n%s", err.Error())
 		return
 	}
-	strTbl = strTblData.(StrTbl)
+	strTbl, err = BuildStrTbl(strTblData)
 	if len(strTbl) != 36 {
 		t.Errorf("Incorrect size of .strtab.\nExpected 36, got %d\n", len(strTbl))
 		return
 	}
 
 	symTabSect = sectMap[NameDynSymTab][0]
-	symTab, err = symTabSect.Data(elf.Header().ELFIdent().Endianess)
+	symTabData, err = symTabSect.Data()
+	symTab, err = BuildSymTab(
+		symTabData, symTabSect.SectHdr(), elf.Header().ELFIdent().Endianess)
 	if err != nil {
-		t.Errorf("Unable to read .symtab.\n%s", err.Error())
+		t.Errorf("Unable to read .dynsym.\n%s", err.Error())
 		return
 	}
 
 	strTblSect = sectMap[NameDynSymNameTbl][0]
-	strTblData, err = strTblSect.Data(elf.Header().ELFIdent().Endianess)
+	strTblData, err = strTblSect.Data()
 	if err != nil {
 		t.Errorf("Unable to read .dynstr.\n%s", err.Error())
 		return
 	}
-	strTbl = strTblData.(StrTbl)
+	strTbl, err = BuildStrTbl(strTblData)
 	if len(strTbl) != 5 {
 		t.Errorf("Incorrect size of .dynstr.\nExpected 5, got %d\n", len(strTbl))
 		return

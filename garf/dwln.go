@@ -53,13 +53,12 @@ func (d *DwData) readLineNumberInfo(u *DwUnit) (*LnInfo, error) {
 	if len(debugLineSect) > 1 {
 	}
 
-	sectReader, err := debugLineSect[0].NewSectReader()
+	sectReader, err := debugLineSect[0].NewReader()
 	if err != nil {
 		err = fmt.Errorf(
 			"Unable to get a SectReader for .debug_line section.\n%s", err.Error())
 		return nil, err
 	}
-	defer sectReader.Finish()
 
 	_, err = sectReader.Seek(int64(offset), 0)
 	if err != nil {
@@ -248,7 +247,7 @@ func (d *DwData) readLineNumberInfo(u *DwUnit) (*LnInfo, error) {
 	}
 
 	// Read the program until the end of the line info for the unit.
-	for initLen-sectReader.Len() < lnInfo.Size {
+	for uint64(initLen-sectReader.Len()) < lnInfo.Size {
 		b, err := sectReader.ReadByte()
 		if err != nil {
 			err = fmt.Errorf(
