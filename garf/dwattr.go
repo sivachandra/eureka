@@ -49,8 +49,16 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrUint64(u, r, form, en)
 	case DW_AT_stmt_list:
 		attr.Value, err = d.readAttrUint64(u, r, form, en)
+	case DW_AT_artificial:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_external:
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_explicit:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_const_value:
+		attr.Value, err = d.readAttrInt64(u, r, form, en)
+	case DW_AT_upper_bound:
+		attr.Value, err = d.readAttrInt64(u, r, form, en)
 	case DW_AT_decl_file:
 		fallthrough
 	case DW_AT_decl_line:
@@ -60,6 +68,10 @@ func (d *DwData) readAttr(
 	case DW_AT_abstract_origin:
 		fallthrough
 	case DW_AT_specification:
+		fallthrough
+	case DW_AT_object_pointer:
+		fallthrough
+	case DW_AT_import:
 		fallthrough
 	case DW_AT_type:
 		attr.Value, err = d.readAttrRef(u, r, form, en)
@@ -72,6 +84,10 @@ func (d *DwData) readAttr(
 		attr.Value = DwAte(attr.Value.(byte))
 	case DW_AT_ranges:
 		attr.Value, err = d.readAttrUint64(u, r, form, en)
+	case DW_AT_accessibility:
+		attr.Value, err = d.readAttrUint16(u, r, form, en)
+	case DW_AT_inline:
+		attr.Value, err = d.readAttrUint16(u, r, form, en)
 	case DW_AT_location:
 		if form == DW_FORM_sec_offset {
 			attr.Value, err = d.readAttrUint64(u, r, form, en)
@@ -80,10 +96,20 @@ func (d *DwData) readAttr(
 		} else {
 			err = fmt.Errorf("Unsupported form %d for DW_AT_Location.", form)
 		}
+	case DW_AT_data_member_location:
+		if form == DW_FORM_sec_offset {
+			attr.Value, err = d.readAttrUint64(u, r, form, en)
+		} else if form == DW_FORM_exprloc {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else {
+			attr.Value, err = d.readAttrInt64(u, r, form, en)
+		}
 	case DW_AT_declaration:
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_GNU_tail_call:
-		fallthrough
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_GNU_all_tail_call_sites:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_GNU_all_call_sites:
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_GNU_call_site_value:
@@ -125,14 +151,14 @@ func (d *DwData) readAttrStr(
 			}
 		}
 
-		debugStrMap, err := d.DebugStr()
+		debugStrTbl, err := d.DebugStr()
 		if err != nil {
 			return "", fmt.Errorf("Error reading .debug_str.", err)
 		}
 
-		str, exists := debugStrMap[offset]
-		if !exists {
-			return "", fmt.Errorf("Invalid .debug_str offset", err)
+		str, err := debugStrTbl.ReadStr(offset)
+		if err != nil {
+			return "", fmt.Errorf("Error reading string: %s.", err.Error)
 		}
 
 		return str, nil

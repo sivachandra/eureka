@@ -17,6 +17,7 @@ import (
 
 import (
 	"eureka/golf"
+	"eureka/utils"
 	"eureka/utils/leb128"
 )
 
@@ -176,13 +177,34 @@ func (u DwUnit) LineNumberInfo() (*LnInfo, error) {
 	return u.lnInfo, err
 }
 
-type DebugStrMap map[uint64]string
+// DebugStrTbl encapsulates the data in the .debug_str section.
+type DebugStrTbl struct {
+	data []byte
+}
+
+// Reads a string from the .debug_str at the specified offset.
+// Die attributes can refer to full or partial strings. Hence, we do not
+// prefetch the full strings. Each string is read out on demand from the
+// specified offset.
+func (t *DebugStrTbl) ReadStr(offset uint64) (string, error) {
+	if offset >= uint64(len(t.data)) {
+		return "", fmt.Errorf("Invalid .debug_str offset.")
+	}
+
+	r := bytes.NewReader(t.data)
+	_, err := r.Seek(int64(offset), 0)
+	if err != nil {
+		return "", fmt.Errorf("Unable to seek to .debug_str offset.\n%s", err.Error())
+	}
+
+	return utils.ReadCString(r)
+}
 
 type DwData struct {
 	fileName       string
 	elf            *golf.ELF
 	abbrevTableMap map[uint64]AbbrevTable
-	debugStrMap    DebugStrMap
+	debugStrTbl    *DebugStrTbl
 	compUnits      []DwUnit
 	typeUnits      []DwUnit
 
@@ -437,9 +459,9 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 	return d.compUnits, nil
 }
 
-func (d *DwData) DebugStr() (DebugStrMap, error) {
-	if d.debugStrMap != nil {
-		return d.debugStrMap, nil
+func (d *DwData) DebugStr() (*DebugStrTbl, error) {
+	if d.debugStrTbl != nil {
+		return d.debugStrTbl, nil
 	}
 
 	sectMap := d.elf.SectMap()
@@ -457,22 +479,9 @@ func (d *DwData) DebugStr() (DebugStrMap, error) {
 		return nil, fmt.Errorf("Error fetching .debug_str data.", err)
 	}
 
-	var str []uint8
-	offset := uint64(0)
-	debugStrMap := make(DebugStrMap)
-	for offset < uint64(len(debugStrData)) {
-		c := debugStrData[offset]
-		str = append(str, c)
-		if c == 0 {
-			l := len(str)
-			debugStrMap[offset+1-uint64(l)] = string(str[0 : l-1])
-			str = nil
-		}
-		offset++
-	}
-
-	d.debugStrMap = debugStrMap
-	return d.debugStrMap, nil
+	d.debugStrTbl = new(DebugStrTbl)
+	d.debugStrTbl.data = debugStrData
+	return d.debugStrTbl, nil
 }
 
 func (d *DwData) readDIETree(u *DwUnit, offset uint64) (*DIE, error) {
@@ -533,31 +542,42 @@ func (d *DwData) readDIETreeHelper(
 		return nil, fmt.Errorf("Invalid abbrev code for a DIE.", nil)
 	}
 
+	die = new(DIE)
+	die.Tag = abbrevEntry.Tag
+	die.Parent = parent
+	die.debugInfoOffsetStart = debugInfoOffset
+
+	// We register the DIE in the die map even before the the complete die is
+	// read out as we want to avoid infinite recursion due to DIEs referring to
+	// each other cyclically. For example, a DIE for a type can have a typedef
+	// DIE as its sibling, which in turn refers to the DIE itself.
+	//
+	// The registered DIE should be deleted from the DIE map if an error occurs
+	// reading it.
+	d.dieMap[debugInfoOffset] = die
+
 	attributes := make(map[DwAt]Attribute)
 	for _, attrForm := range abbrevEntry.AttrForms {
 		attr, err := d.readAttr(u, r, attrForm.Name, attrForm.Form, en)
 		if err != nil {
+			delete(d.dieMap, debugInfoOffset)
 			msg := fmt.Sprintf(
-				"Error reading value of attribute %d.\n%s",
-				attrForm.Name, err.Error())
+				"Error reading value of attribute %x of tag %x at offset %x.\n%s",
+				attrForm.Name, abbrevEntry.Tag, debugInfoOffset, err.Error())
 			err = fmt.Errorf(msg)
 			return nil, err
 		}
 		attributes[attr.Name] = attr
 	}
-
-	die = new(DIE)
-	die.Tag = abbrevEntry.Tag
-	die.Parent = parent
 	die.Attributes = attributes
-	die.debugInfoOffsetStart = debugInfoOffset
 
 	for abbrevEntry.HasChildren {
 		childDie, err := d.readDIETreeHelper(u, r, en, die)
 		if err != nil {
+			delete(d.dieMap, debugInfoOffset)
 			err = fmt.Errorf(
-				"Error reading child DIE tree of tag %d.\n%s",
-				abbrevEntry.Tag, err.Error())
+				"Error reading child DIE tree of tag %x at offset %x.\n%s",
+				abbrevEntry.Tag, debugInfoOffset, err.Error())
 			return nil, err
 		}
 
@@ -569,6 +589,5 @@ func (d *DwData) readDIETreeHelper(
 	}
 	die.debugInfoOffsetEnd = uint64(r.Size() - int64(r.Len()))
 
-	d.dieMap[debugInfoOffset] = die
 	return die, nil
 }
