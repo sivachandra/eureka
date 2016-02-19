@@ -562,8 +562,9 @@ func (d *DwData) readDIETreeHelper(
 		if err != nil {
 			delete(d.dieMap, debugInfoOffset)
 			msg := fmt.Sprintf(
-				"Error reading value of attribute %x of tag %x at offset %x.\n%s",
-				attrForm.Name, abbrevEntry.Tag, debugInfoOffset, err.Error())
+				"Error reading value of attribute %s of tag %s at offset %x.\n%s",
+				DwAtStr[attrForm.Name], DwTagStr[abbrevEntry.Tag],
+				debugInfoOffset, err.Error())
 			err = fmt.Errorf(msg)
 			return nil, err
 		}
@@ -577,7 +578,7 @@ func (d *DwData) readDIETreeHelper(
 			delete(d.dieMap, debugInfoOffset)
 			err = fmt.Errorf(
 				"Error reading child DIE tree of tag %x at offset %x.\n%s",
-				abbrevEntry.Tag, debugInfoOffset, err.Error())
+				DwTagStr[abbrevEntry.Tag], debugInfoOffset, err.Error())
 			return nil, err
 		}
 

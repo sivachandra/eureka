@@ -201,10 +201,12 @@ func (d *DwData) readAttrInt16(
 
 		return int16(i), nil
 	default:
-		return 0, fmt.Errorf("Cannot read data of form %d as int16.", f)
+		err = fmt.Errorf(
+			"Cannot read data of form %s as int16 value", DwFormStr[f])
+		return 0, err
 	}
 
-	err = fmt.Errorf("Error reading data of form %d.\n%s", f, err.Error())
+	err = fmt.Errorf("Error reading data of form %s.\n%s", DwFormStr[f], err.Error())
 	return 0, err
 }
 
@@ -249,10 +251,10 @@ func (d *DwData) readAttrInt32(
 
 		return int32(i), nil
 	default:
-		return 0, fmt.Errorf("Cannot read data of form %d as int32.", f)
+		return 0, fmt.Errorf("Cannot read data of form %s as int32.", DwFormStr[f])
 	}
 
-	err = fmt.Errorf("Error reading data of form %d.\n%s", f, err.Error())
+	err = fmt.Errorf("Error reading data of form %s.\n%s", DwFormStr[f], err.Error())
 	return 0, err
 }
 
@@ -306,10 +308,10 @@ func (d *DwData) readAttrInt64(
 
 		return i, nil
 	default:
-		return 0, fmt.Errorf("Cannot read data of form %d as int64.", f)
+		return 0, fmt.Errorf("Cannot read data of form %s as int64.", DwFormStr[f])
 	}
 
-	err = fmt.Errorf("Error reading data of form %d.\n%s", f, err.Error())
+	err = fmt.Errorf("Error reading data of form %s.\n%s", DwFormStr[f], err.Error())
 	return 0, err
 }
 
@@ -345,10 +347,10 @@ func (d *DwData) readAttrUint16(
 
 		return uint16(i), nil
 	default:
-		return 0, fmt.Errorf("Cannot read data of form %d as int16.", f)
+		return 0, fmt.Errorf("Cannot read data of form %s as int16.", DwFormStr[f])
 	}
 
-	err = fmt.Errorf("Error reading data of form %d.\n%s", f, err.Error())
+	err = fmt.Errorf("Error reading data of form %s.\n%s", DwFormStr[f], err.Error())
 	return 0, err
 }
 
@@ -393,10 +395,10 @@ func (d *DwData) readAttrUint32(
 
 		return uint32(i), nil
 	default:
-		return 0, fmt.Errorf("Cannot read data of form %d as uint32.", f)
+		return 0, fmt.Errorf("Cannot read data of form %s as uint32.", DwFormStr[f])
 	}
 
-	err = fmt.Errorf("Error reading data of form %d.\n%s", f, err.Error())
+	err = fmt.Errorf("Error reading data of form %s.\n%s", DwFormStr[f], err.Error())
 	return 0, err
 }
 
@@ -486,10 +488,10 @@ func (d *DwData) readAttrUint64(
 			return i, nil
 		}
 	default:
-		return 0, fmt.Errorf("Cannot read data of form %d as uint64.", f)
+		return 0, fmt.Errorf("Cannot read data of form %s as uint64.", DwFormStr[f])
 	}
 
-	err = fmt.Errorf("Error reading data of form %d.\n%s", f, err.Error())
+	err = fmt.Errorf("Error reading data of form %s.\n%s", DwFormStr[f], err.Error())
 	return 0, err
 }
 
@@ -508,7 +510,7 @@ func (d *DwData) readAttrFlag(
 	case DW_FORM_flag_present:
 		return true, nil
 	default:
-		return false, fmt.Errorf("Cannot read data of form %d as a flag.", f)
+		return false, fmt.Errorf("Cannot read data of form %s as a flag.", DwFormStr[f])
 	}
 }
 
@@ -555,18 +557,18 @@ func (d *DwData) readAttrRef(
 
 		offset = uint64(i)
 	default:
-		return nil, fmt.Errorf("Cannot read form %d data as a reference.")
+		return nil, fmt.Errorf("Cannot read form %s data as a reference.", DwFormStr[f])
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("Error reading form %d data.\n%s", err.Error())
+		return nil, fmt.Errorf("Error reading form %s data.\n%s", DwFormStr[f], err.Error())
 	}
 
 	dieTree, err := d.readDIETree(u, offset)
 	if err != nil {
 		err = fmt.Errorf(
-			"Error reading DIE tree at offset %d specified by form %d.\n%s",
-			offset, f, err.Error())
+			"Error reading DIE tree at offset %d specified by form %s.\n%s",
+			offset, DwFormStr[f], err.Error())
 	}
 
 	return dieTree, nil
@@ -613,18 +615,21 @@ func (d *DwData) readAttrByteSlice(
 			break
 		}
 	default:
-		return nil, fmt.Errorf("Cannot read form %d data a block of bytes.", f)
+		return nil, fmt.Errorf("Cannot read form %s data a block of bytes.", DwFormStr[f])
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("Error reading block size of form %d data.\n%s", err.Error())
+		err = fmt.Errorf(
+			"Error reading block size of form %s data.\n%s", DwFormStr[f], err.Error())
+		return nil, err
 	}
 
 	b := make([]byte, size)
 	_, err = r.Read(b)
 	if err != nil {
 		err = fmt.Errorf(
-			"Error reading %d block of data for form %d.\n%s", size, f, err.Error())
+			"Error reading %d-byte block of data for form %s.\n%s",
+			size, DwFormStr[f], err.Error())
 		return nil, err
 	}
 
