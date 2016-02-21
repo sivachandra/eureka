@@ -17,6 +17,12 @@ type DwUnitType uint8
 type DwAte uint8
 type DwLnOpcode uint8
 type DwLnFormat uint16
+type DwOrder uint8
+type DwVis uint8
+type DwInl uint8
+type DwAccess uint8
+type DwVirtuality uint8
+type DwEnd uint8
 
 const (
 	NullAbbrevEntry = uint64(0)
@@ -445,4 +451,40 @@ const (
 	DW_LNCT_MD5             = DwLnFormat(0x0005)
 	DW_LNCT_lo_user         = DwLnFormat(0x2000)
 	DW_LNCT_hi_user         = DwLnFormat(0x3fff)
+)
+
+const (
+	DW_ORD_row_major = DwOrder(0x00)
+	DW_ORD_col_major = DwOrder(0x01)
+)
+
+const (
+	DW_VIS_local     = DwVis(0x01)
+	DW_VIS_exported  = DwVis(0x02)
+	DW_VIS_qualified = DwVis(0x03)
+)
+
+const (
+	DW_INL_not_inlined          = DwInl(0x00)
+	DW_INL_inlined              = DwInl(0x01)
+	DW_INL_declared_not_inlined = DwInl(0x02)
+	DW_INL_declared_inlined     = DwInl(0x03)
+)
+
+const (
+	DW_ACCESS_public    = DwAccess(0x01)
+	DW_ACCESS_protected = DwAccess(0x02)
+	DW_ACCESS_private   = DwAccess(0x03)
+)
+
+const (
+	DW_VIRTUALITY_none         = DwVirtuality(0x00)
+	DW_VIRTUALITY_virtual      = DwVirtuality(0x01)
+	DW_VIRTUALITY_pure_virtual = DwVirtuality(0x02)
+)
+
+const (
+	DW_END_default = DwEnd(0x00)
+	DW_END_big     = DwEnd(0x01)
+	DW_END_little  = DwEnd(0x02)
 )

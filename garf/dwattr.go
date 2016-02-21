@@ -32,70 +32,176 @@ func (d *DwData) readAttr(
 	attr.Name = at
 
 	switch at {
-	case DW_AT_producer:
-		fallthrough
-	case DW_AT_comp_dir:
-		fallthrough
-	case DW_AT_linkage_name:
-		fallthrough
-	case DW_AT_name:
-		attr.Value, err = d.readAttrStr(u, r, form, en)
-	case DW_AT_language:
-		attr.Value, err = d.readAttrUint16(u, r, form, en)
-		attr.Value = DwLang(attr.Value.(uint16))
-	case DW_AT_low_pc:
-		fallthrough
-	case DW_AT_high_pc:
-		attr.Value, err = d.readAttrUint64(u, r, form, en)
-	case DW_AT_stmt_list:
-		attr.Value, err = d.readAttrUint64(u, r, form, en)
-	case DW_AT_artificial:
-		attr.Value, err = d.readAttrFlag(u, r, form, en)
-	case DW_AT_external:
-		attr.Value, err = d.readAttrFlag(u, r, form, en)
-	case DW_AT_explicit:
-		attr.Value, err = d.readAttrFlag(u, r, form, en)
-	case DW_AT_const_value:
-		attr.Value, err = d.readAttrInt64(u, r, form, en)
-	case DW_AT_upper_bound:
-		attr.Value, err = d.readAttrInt64(u, r, form, en)
-	case DW_AT_decl_file:
-		fallthrough
-	case DW_AT_decl_line:
-		attr.Value, err = d.readAttrUint32(u, r, form, en)
 	case DW_AT_sibling:
-		fallthrough
-	case DW_AT_abstract_origin:
-		fallthrough
-	case DW_AT_specification:
-		fallthrough
-	case DW_AT_object_pointer:
-		fallthrough
-	case DW_AT_import:
-		fallthrough
-	case DW_AT_type:
 		attr.Value, err = d.readAttrRef(u, r, form, en)
-	case DW_AT_frame_base:
-		attr.Value, err = d.readAttrByteSlice(u, r, form, en)
-	case DW_AT_byte_size:
-		attr.Value, err = d.readAttrUint32(u, r, form, en)
-	case DW_AT_encoding:
-		attr.Value, err = r.ReadByte()
-		attr.Value = DwAte(attr.Value.(byte))
-	case DW_AT_ranges:
-		attr.Value, err = d.readAttrUint64(u, r, form, en)
-	case DW_AT_accessibility:
-		attr.Value, err = d.readAttrUint16(u, r, form, en)
-	case DW_AT_inline:
-		attr.Value, err = d.readAttrUint16(u, r, form, en)
 	case DW_AT_location:
-		if form == DW_FORM_sec_offset {
+		if form.IsLocListPtr() {
 			attr.Value, err = d.readAttrUint64(u, r, form, en)
-		} else if form == DW_FORM_exprloc {
+		} else if form.IsExprLoc() {
 			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
 		} else {
-			err = fmt.Errorf("Unsupported form %d for DW_AT_Location.", form)
+			err = fmt.Errorf("Unsupported form %s for DW_AT_Location.", DwFormStr[form])
 		}
+	case DW_AT_name:
+		attr.Value, err = d.readAttrStr(u, r, form, en)
+	case DW_AT_ordering:
+		var v uint8
+		v, err = r.ReadByte()
+		attr.Value = DwOrder(v)
+	case DW_AT_byte_size:
+		fallthrough
+	case DW_AT_bit_offset:
+		fallthrough
+	case DW_AT_bit_size:
+		if form.IsConstant() {
+			attr.Value, err = d.readAttrUint32(u, r, form, en)
+		} else if form.IsExprLoc() {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else if form.IsRef() {
+			attr.Value, err = d.readAttrRef(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for attribute %s.",
+				DwFormStr[form],
+				DwAtStr[at])
+		}
+	case DW_AT_stmt_list:
+		if !form.IsLinePtr() {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_stmt_list.", DwFormStr[form])
+			break
+		}
+		attr.Value, err = d.readAttrUint64(u, r, form, en)
+	case DW_AT_low_pc:
+		if !form.IsAddress() {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_low_pc.", DwFormStr[form])
+			break
+		}
+		attr.Value, err = d.readAttrUint64(u, r, form, en)
+	case DW_AT_high_pc:
+		if !form.IsAddress() && !form.IsConstant() {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_high_pc.", DwFormStr[form])
+			break
+		}
+		attr.Value, err = d.readAttrUint64(u, r, form, en)
+	case DW_AT_language:
+		if !form.IsConstant() {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_language.", DwFormStr[form])
+			break
+		}
+		attr.Value, err = d.readAttrUint16(u, r, form, en)
+		attr.Value = DwLang(attr.Value.(uint16))
+	case DW_AT_visibility:
+		var v uint8
+		v, err = r.ReadByte()
+		attr.Value = DwVis(v)
+	case DW_AT_import:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_string_length:
+		if form.IsExprLoc() {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else if form.IsLocListPtr() {
+			attr.Value, err = d.readAttrUint64(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_string_length.", DwFormStr[form])
+		}
+	case DW_AT_common_reference:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_comp_dir:
+		attr.Value, err = d.readAttrStr(u, r, form, en)
+	case DW_AT_const_value:
+		if form.IsBlock() {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else if form.IsConstant() {
+			attr.Value, err = d.readAttrInt64(u, r, form, en)
+		} else if form.IsString() {
+			attr.Value, err = d.readAttrStr(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_const_value.", DwFormStr[form])
+		}
+	case DW_AT_containing_type:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_default_value:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_inline:
+		var v uint8
+		v, err = r.ReadByte()
+		attr.Value = DwInl(v)
+	case DW_AT_is_optional:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_lower_bound:
+		if form.IsExprLoc() {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else if form.IsConstant() {
+			attr.Value, err = d.readAttrInt64(u, r, form, en)
+		} else if form.IsRef() {
+			attr.Value, err = d.readAttrRef(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_lower_bound.", DwFormStr[form])
+		}
+	case DW_AT_producer:
+		attr.Value, err = d.readAttrStr(u, r, form, en)
+	case DW_AT_prototyped:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_return_addr:
+		if form.IsExprLoc() {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else if form.IsLocListPtr() {
+			attr.Value, err = d.readAttrUint64(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_return_addr.", DwFormStr[form])
+		}
+	case DW_AT_start_scope:
+		if form.IsRangeListPtr() {
+			attr.Value, err = d.readAttrUint64(u, r, form, en)
+		} else if form.IsConstant() {
+			attr.Value, err = d.readAttrInt64(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_start_scope.", DwFormStr[form])
+		}
+	case DW_AT_bit_stride:
+		if form.IsExprLoc() {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else if form.IsConstant() {
+			attr.Value, err = d.readAttrInt64(u, r, form, en)
+		} else if form.IsRef() {
+			attr.Value, err = d.readAttrRef(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_bit_stride.", DwFormStr[form])
+		}
+	case DW_AT_upper_bound:
+		if form.IsExprLoc() {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else if form.IsConstant() {
+			attr.Value, err = d.readAttrInt64(u, r, form, en)
+		} else if form.IsRef() {
+			attr.Value, err = d.readAttrRef(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_upper_bound.", DwFormStr[form])
+		}
+	case DW_AT_abstract_origin:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_accessibility:
+		var v uint8
+		v, err = r.ReadByte()
+		attr.Value = DwAccess(v)
+	case DW_AT_address_class:
+		// TODO: Is reading a byte enough??
+		attr.Value, err = r.ReadByte()
+	case DW_AT_artificial:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_base_types:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
 	case DW_AT_data_member_location:
 		if form == DW_FORM_sec_offset {
 			attr.Value, err = d.readAttrUint64(u, r, form, en)
@@ -104,8 +210,104 @@ func (d *DwData) readAttr(
 		} else {
 			attr.Value, err = d.readAttrInt64(u, r, form, en)
 		}
+	case DW_AT_decl_file:
+		attr.Value, err = d.readAttrUint32(u, r, form, en)
+	case DW_AT_decl_line:
+		attr.Value, err = d.readAttrUint32(u, r, form, en)
 	case DW_AT_declaration:
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_encoding:
+		attr.Value, err = r.ReadByte()
+		attr.Value = DwAte(attr.Value.(byte))
+	case DW_AT_external:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_frame_base:
+		if form.IsExprLoc() {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else if form.IsLocListPtr() {
+			attr.Value, err = d.readAttrUint64(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_frame_base.", DwFormStr[form])
+		}
+	case DW_AT_friend:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_namelist_item:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_priority:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_segment:
+		if form.IsExprLoc() {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else if form.IsLocListPtr() {
+			attr.Value, err = d.readAttrUint64(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_segment.", DwFormStr[form])
+		}
+	case DW_AT_specification:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_static_link:
+		if form.IsExprLoc() {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else if form.IsLocListPtr() {
+			attr.Value, err = d.readAttrUint64(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_static_link.", DwFormStr[form])
+		}
+	case DW_AT_type:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_variable_parameter:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_virtuality:
+		var v uint8
+		v, err = r.ReadByte()
+		attr.Value = DwVirtuality(v)
+	case DW_AT_vtable_elem_location:
+		if form.IsExprLoc() {
+			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		} else if form.IsLocListPtr() {
+			attr.Value, err = d.readAttrUint64(u, r, form, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for DW_AT_vtable_elem_location.",
+				DwFormStr[form])
+		}
+	case DW_AT_ranges:
+		attr.Value, err = d.readAttrUint64(u, r, form, en)
+	case DW_AT_picture_string:
+		attr.Value, err = d.readAttrStr(u, r, form, en)
+	case DW_AT_mutable:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_threads_scaled:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_explicit:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_object_pointer:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_endianity:
+		var v uint8
+		v, err = r.ReadByte()
+		attr.Value = DwEnd(v)
+	case DW_AT_elemental:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_pure:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_recursive:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_signature:
+		attr.Value, err = d.readAttrRef(u, r, form, en)
+	case DW_AT_main_subprogram:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_const_expr:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_enum_class:
+		attr.Value, err = d.readAttrFlag(u, r, form, en)
+	case DW_AT_linkage_name:
+		attr.Value, err = d.readAttrStr(u, r, form, en)
+
+	// GNU extension attributes
 	case DW_AT_GNU_tail_call:
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_GNU_all_tail_call_sites:
@@ -547,6 +749,8 @@ func (d *DwData) readAttrRef(
 		}
 
 		offset = uint64(i)
+	case DW_FORM_ref8:
+		err = binary.Read(r, en, &offset)
 	case DW_FORM_ref_udata:
 		var i uint64
 
