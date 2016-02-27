@@ -48,16 +48,24 @@ type Attribute struct {
 }
 
 type DIE struct {
+	// The debug info tag of this DIE.
 	Tag        DwTag
+
+	// A map of attributes of this DIE.
 	Attributes map[DwAt]Attribute
+
+	// The parent DIE of this DIE.
 	Parent     *DIE
+
+	// The children of this DIE.
 	Children   []*DIE
 
-	// Offset of the first byte of the contribution of this DIE.
-	debugInfoOffsetStart uint64
+	// Offset of the first byte of the contribution of this DIE
+	// in the .debug_info section.
+	startOffset uint64
 
 	// Offset of the first byte after the end of the contribution of this DIE.
-	debugInfoOffsetEnd uint64
+	endOffset uint64
 }
 
 type LnInfoTimestamp interface {
@@ -143,10 +151,12 @@ type DwUnit struct {
 	// The size of the DW_AT_addr attributes in this unit.
 	AddressSize byte
 
+	// Offset of this units header in the .debug_info section.
+	HeaderOffset uint64
+
 	// Offset into the .debug_info section at which the data for
-	// DIE tree of this unit begins. It is NOT the offset at which the
-	// header for this unit begins.
-	DebugInfoOffset uint64
+	// DIE tree of this unit begins, after this unit's header.
+	DataOffset uint64
 
 	// The complete DIE tree of this unit. Will be nil until a call to the
 	// DIETree method.
@@ -157,23 +167,23 @@ type DwUnit struct {
 	lnInfo *LnInfo
 }
 
-func (u DwUnit) DIETree() (*DIE, error) {
+func (u *DwUnit) DIETree() (*DIE, error) {
 	if u.dieTree != nil {
 		return u.dieTree, nil
 	}
 
 	var err error
-	u.dieTree, err = u.Parent.readDIETree(&u, u.DebugInfoOffset)
+	u.dieTree, err = u.Parent.readDIETree(u, u.DataOffset)
 	return u.dieTree, err
 }
 
-func (u DwUnit) LineNumberInfo() (*LnInfo, error) {
+func (u *DwUnit) LineNumberInfo() (*LnInfo, error) {
 	if u.lnInfo != nil {
 		return u.lnInfo, nil
 	}
 
 	var err error
-	u.lnInfo, err = u.Parent.readLineNumberInfo(&u)
+	u.lnInfo, err = u.Parent.readLineNumberInfo(u)
 	return u.lnInfo, err
 }
 
@@ -182,7 +192,8 @@ type DebugStrTbl struct {
 	data []byte
 }
 
-// Reads a string from the .debug_str at the specified offset.
+// Reads a string from the .debug_str data at the specified offset.
+//
 // Die attributes can refer to full or partial strings. Hence, we do not
 // prefetch the full strings. Each string is read out on demand from the
 // specified offset.
@@ -205,10 +216,10 @@ type DwData struct {
 	elf            *golf.ELF
 	abbrevTableMap map[uint64]AbbrevTable
 	debugStrTbl    *DebugStrTbl
-	compUnits      []DwUnit
-	typeUnits      []DwUnit
+	compUnits      []*DwUnit
+	typeUnits      []*DwUnit
 
-	// Mapping from offset into .debug_info section to the DIE at that
+	// Mapping from offset into the .debug_info section to the DIE at that
 	// offset.
 	dieMap map[uint64]*DIE
 }
@@ -224,8 +235,8 @@ func LoadDwData(fileName string) (*DwData, error) {
 		return nil, err
 	}
 
-	dwData.dieMap = make(map[uint64]*DIE)
 	dwData.abbrevTableMap = make(map[uint64]AbbrevTable)
+	dwData.dieMap = make(map[uint64]*DIE)
 
 	return dwData, nil
 }
@@ -245,16 +256,16 @@ func (d *DwData) AbbrevTable(offset uint64) (AbbrevTable, error) {
 	}
 
 	sectMap := d.elf.SectMap()
-	debugAbbrevSections, exists := sectMap[".debug_abbrev"]
+	sections, exists := sectMap[".debug_abbrev"]
 	if !exists {
 		return nil, fmt.Errorf(".debug_abbrev section is not present.", nil)
 	}
 
-	if len(debugAbbrevSections) > 1 {
+	if len(sections) > 1 {
 		return nil, fmt.Errorf("More than one .debug_abbrev sections.", nil)
 	}
 
-	reader, err := debugAbbrevSections[0].NewReader()
+	reader, err := sections[0].NewReader()
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching .debug_abbrev reader.", err)
 	}
@@ -328,27 +339,27 @@ func (d *DwData) AbbrevTable(offset uint64) (AbbrevTable, error) {
 	return table, nil
 }
 
-func (d *DwData) CompUnits() ([]DwUnit, error) {
+func (d *DwData) CompUnits() ([]*DwUnit, error) {
 	if d.compUnits != nil {
 		return d.compUnits, nil
 	}
 
 	sectMap := d.elf.SectMap()
-	debugInfoSections, exists := sectMap[".debug_info"]
+	sections, exists := sectMap[".debug_info"]
 	if !exists {
 		return nil, fmt.Errorf(".debug_info section is not present.", nil)
 	}
 
-	if len(debugInfoSections) > 1 {
+	if len(sections) > 1 {
 		return nil, fmt.Errorf("More than one .debug_info sections.", nil)
 	}
 
-	reader, err := debugInfoSections[0].NewReader()
+	reader, err := sections[0].NewReader()
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching .debug_info section reader.", err)
 	}
 
-	d.compUnits = make([]DwUnit, 0)
+	d.compUnits = make([]*DwUnit, 0)
 	en := d.elf.Endianess()
 	for true {
 		if reader.Len() == 0 {
@@ -435,7 +446,7 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 
 		if unitType == DW_UT_type {
 		} else {
-			var cu DwUnit
+			cu := new(DwUnit)
 
 			cu.Parent = d
 			cu.Type = unitType
@@ -448,9 +459,10 @@ func (d *DwData) CompUnits() ([]DwUnit, error) {
 
 			cu.Format = format
 			cu.Version = version
+			cu.HeaderOffset = headerOffset
 			cu.DebugAbbrevOffset = debugAbbrevOffset
 			cu.AddressSize = addrSize
-			cu.DebugInfoOffset = uint64(reader.Size() - int64(reader.Len()))
+			cu.DataOffset = uint64(reader.Size() - int64(reader.Len()))
 			d.compUnits = append(d.compUnits, cu)
 			reader.Seek(int64(cu.Size+headerOffset), 0)
 		}
@@ -486,16 +498,16 @@ func (d *DwData) DebugStr() (*DebugStrTbl, error) {
 
 func (d *DwData) readDIETree(u *DwUnit, offset uint64) (*DIE, error) {
 	sectMap := d.elf.SectMap()
-	debugInfoSections, exists := sectMap[".debug_info"]
+	sections, exists := sectMap[".debug_info"]
 	if !exists {
 		return nil, fmt.Errorf(".debug_info section is not present.", nil)
 	}
 
-	if len(debugInfoSections) > 1 {
+	if len(sections) > 1 {
 		return nil, fmt.Errorf("More than one .debug_info sections.", nil)
 	}
 
-	reader, err := debugInfoSections[0].NewReader()
+	reader, err := sections[0].NewReader()
 	if err != nil {
 		return nil, fmt.Errorf("Error fetching .debug_info section reader.", err)
 	}
@@ -512,11 +524,13 @@ func (d *DwData) readDIETree(u *DwUnit, offset uint64) (*DIE, error) {
 
 func (d *DwData) readDIETreeHelper(
 	u *DwUnit, r *bytes.Reader, en binary.ByteOrder, parent *DIE) (*DIE, error) {
-	debugInfoOffset := uint64(r.Size() - int64(r.Len()))
-	die, exists := d.dieMap[debugInfoOffset]
+	// This is the DIE's offset in .debug_info section.
+	offset := uint64(r.Size() - int64(r.Len()))
+
+	die, exists := d.dieMap[offset]
 	if exists {
 		die.Parent = parent
-		r.Seek(int64(die.debugInfoOffsetEnd), 0)
+		r.Seek(int64(die.endOffset), 0)
 
 		return die, nil
 	}
@@ -545,7 +559,7 @@ func (d *DwData) readDIETreeHelper(
 	die = new(DIE)
 	die.Tag = abbrevEntry.Tag
 	die.Parent = parent
-	die.debugInfoOffsetStart = debugInfoOffset
+	die.startOffset = offset
 
 	// We register the DIE in the die map even before the the complete die is
 	// read out as we want to avoid infinite recursion due to DIEs referring to
@@ -554,17 +568,17 @@ func (d *DwData) readDIETreeHelper(
 	//
 	// The registered DIE should be deleted from the DIE map if an error occurs
 	// reading it.
-	d.dieMap[debugInfoOffset] = die
+	d.dieMap[offset] = die
 
 	attributes := make(map[DwAt]Attribute)
 	for _, attrForm := range abbrevEntry.AttrForms {
 		attr, err := d.readAttr(u, r, attrForm.Name, attrForm.Form, en)
 		if err != nil {
-			delete(d.dieMap, debugInfoOffset)
+			delete(d.dieMap, offset)
 			msg := fmt.Sprintf(
 				"Error reading value of attribute %s of tag %s at offset %x.\n%s",
 				DwAtStr[attrForm.Name], DwTagStr[abbrevEntry.Tag],
-				debugInfoOffset, err.Error())
+				offset, err.Error())
 			err = fmt.Errorf(msg)
 			return nil, err
 		}
@@ -575,10 +589,10 @@ func (d *DwData) readDIETreeHelper(
 	for abbrevEntry.HasChildren {
 		childDie, err := d.readDIETreeHelper(u, r, en, die)
 		if err != nil {
-			delete(d.dieMap, debugInfoOffset)
+			delete(d.dieMap, offset)
 			err = fmt.Errorf(
 				"Error reading child DIE tree of tag %x at offset %x.\n%s",
-				DwTagStr[abbrevEntry.Tag], debugInfoOffset, err.Error())
+				DwTagStr[abbrevEntry.Tag], offset, err.Error())
 			return nil, err
 		}
 
@@ -588,7 +602,7 @@ func (d *DwData) readDIETreeHelper(
 
 		die.Children = append(die.Children, childDie)
 	}
-	die.debugInfoOffsetEnd = uint64(r.Size() - int64(r.Len()))
+	die.endOffset = uint64(r.Size() - int64(r.Len()))
 
 	return die, nil
 }
