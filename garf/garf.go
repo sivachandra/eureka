@@ -60,6 +60,9 @@ type DIE struct {
 	// The children of this DIE.
 	Children   []*DIE
 
+	// The unit to which this DIE belongs to.
+	Unit *DwUnit
+
 	// Offset of the first byte of the contribution of this DIE
 	// in the .debug_info section.
 	startOffset uint64
@@ -136,27 +139,31 @@ type DwUnit struct {
 	// Format of the unit.
 	Format DwFormat
 
-	// Size of the unit in the .debug_info section.
-	// It is not the same as the initial length feild in the unit's
-	// header.
-	Size uint64
+	// The size of the DW_AT_addr attributes in this unit.
+	AddressSize byte
 
 	// The DWARF version of this unit.
 	Version uint16
 
+	// Size of the unit in the .debug_info section.
+	// It is not the same as the initial length feild in the unit's
+	// header.
+	size uint64
+
 	// The offset into the .debug_abbrev section where the info for this
 	// unit begins.
-	DebugAbbrevOffset uint64
-
-	// The size of the DW_AT_addr attributes in this unit.
-	AddressSize byte
+	debugAbbrevOffset uint64
 
 	// Offset of this units header in the .debug_info section.
-	HeaderOffset uint64
+	headerOffset uint64
 
 	// Offset into the .debug_info section at which the data for
 	// DIE tree of this unit begins, after this unit's header.
-	DataOffset uint64
+	dataOffset uint64
+
+	// The abbreviation table for this unit. Will be nil until a call to the
+	// DIETree method.
+	abbrevTable AbbrevTable
 
 	// The complete DIE tree of this unit. Will be nil until a call to the
 	// DIETree method.
@@ -173,7 +180,7 @@ func (u *DwUnit) DIETree() (*DIE, error) {
 	}
 
 	var err error
-	u.dieTree, err = u.Parent.readDIETree(u, u.DataOffset)
+	u.dieTree, err = u.Parent.readDIETree(u, u.dataOffset)
 	return u.dieTree, err
 }
 
@@ -214,7 +221,6 @@ func (t *DebugStrTbl) ReadStr(offset uint64) (string, error) {
 type DwData struct {
 	fileName       string
 	elf            *golf.ELF
-	abbrevTableMap map[uint64]AbbrevTable
 	debugStrTbl    *DebugStrTbl
 	compUnits      []*DwUnit
 	typeUnits      []*DwUnit
@@ -235,7 +241,6 @@ func LoadDwData(fileName string) (*DwData, error) {
 		return nil, err
 	}
 
-	dwData.abbrevTableMap = make(map[uint64]AbbrevTable)
 	dwData.dieMap = make(map[uint64]*DIE)
 
 	return dwData, nil
@@ -250,11 +255,6 @@ func (d *DwData) FileName() string {
 }
 
 func (d *DwData) AbbrevTable(offset uint64) (AbbrevTable, error) {
-	abbrevTable, exists := d.abbrevTableMap[offset]
-	if exists {
-		return abbrevTable, nil
-	}
-
 	sectMap := d.elf.SectMap()
 	sections, exists := sectMap[".debug_abbrev"]
 	if !exists {
@@ -335,7 +335,6 @@ func (d *DwData) AbbrevTable(offset uint64) (AbbrevTable, error) {
 		table[entry.AbbrevCode] = entry
 	}
 
-	d.abbrevTableMap[offset] = table
 	return table, nil
 }
 
@@ -452,19 +451,20 @@ func (d *DwData) CompUnits() ([]*DwUnit, error) {
 			cu.Type = unitType
 
 			if format == DwFormat64 {
-				cu.Size = length + 12
+				cu.size = length + 12
 			} else {
-				cu.Size = length + 4
+				cu.size = length + 4
 			}
 
 			cu.Format = format
 			cu.Version = version
-			cu.HeaderOffset = headerOffset
-			cu.DebugAbbrevOffset = debugAbbrevOffset
+			cu.headerOffset = headerOffset
+			cu.debugAbbrevOffset = debugAbbrevOffset
 			cu.AddressSize = addrSize
-			cu.DataOffset = uint64(reader.Size() - int64(reader.Len()))
+			cu.dataOffset = uint64(reader.Size() - int64(reader.Len()))
+			cu.abbrevTable = nil
 			d.compUnits = append(d.compUnits, cu)
-			reader.Seek(int64(cu.Size+headerOffset), 0)
+			reader.Seek(int64(cu.size+headerOffset), 0)
 		}
 	}
 
@@ -535,10 +535,15 @@ func (d *DwData) readDIETreeHelper(
 		return die, nil
 	}
 
-	abrrevTable, err := d.AbbrevTable(u.DebugAbbrevOffset)
-	if err != nil {
-		err = fmt.Errorf("Error getting abbrev table while reading a DIE tree.", err)
-		return nil, err
+	if u.abbrevTable == nil {
+		var err error
+		u.abbrevTable, err = d.AbbrevTable(u.debugAbbrevOffset)
+		if err != nil {
+			err = fmt.Errorf(
+				"Error getting abbrev table while reading a DIE tree.\n%s",
+				err.Error())
+			return nil, err
+		}
 	}
 
 	abbrevCode, err := leb128.ReadUnsigned(r)
@@ -551,7 +556,7 @@ func (d *DwData) readDIETreeHelper(
 		return nil, nil
 	}
 
-	abbrevEntry, exists := abrrevTable[abbrevCode]
+	abbrevEntry, exists := u.abbrevTable[abbrevCode]
 	if !exists {
 		return nil, fmt.Errorf("Invalid abbrev code for a DIE.", nil)
 	}
@@ -559,6 +564,7 @@ func (d *DwData) readDIETreeHelper(
 	die = new(DIE)
 	die.Tag = abbrevEntry.Tag
 	die.Parent = parent
+	die.Unit = u
 	die.startOffset = offset
 
 	// We register the DIE in the die map even before the the complete die is
