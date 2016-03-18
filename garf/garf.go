@@ -71,6 +71,22 @@ type DIE struct {
 	endOffset uint64
 }
 
+// DwOperation is an operation in a DWARF expression with an opcode and its operands.
+type DwOperation struct {
+	// The opcode of the operation
+	Op DwOp
+
+	// The operands of the operation. They are one of the integral types:
+	//   int8, uint8, int16, uint16, int32, uint32, int64, uint64
+	// The DWARF standard prescribes the type of operands an opcode takes.
+	// For convenience, LEB128 and ULEB128 numbers are stored as int64 and
+	// uint64 numbers respectively. Also, operands which denote addresses on
+	// the target architecture are always stored as uint64 values.
+	Operands []interface{}
+}
+
+type DwExpr []DwOperation
+
 type LnInfoTimestamp interface {
 }
 

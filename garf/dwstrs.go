@@ -94,6 +94,8 @@ var DwTagStr = map[DwTag]string{
 	DW_TAG_GNU_template_template_param: "DW_TAG_GNU_template_template_param",
 	DW_TAG_GNU_template_parameter_pack: "DW_TAG_GNU_template_parameter_pack",
 	DW_TAG_GNU_formal_parameter_pack:   "DW_TAG_GNU_formal_parameter_pack",
+	DW_TAG_GNU_call_site:               "DW_TAG_GNU_call_site",
+	DW_TAG_GNU_call_site_parameter:     "DW_TAG_GNU_call_site_parameter",
 	DW_TAG_APPLE_property:              "DW_TAG_APPLE_property",
 
 	DW_TAG_hi_user: "DW_TAG_hi_user",
@@ -594,6 +596,4 @@ var DwOpStr = map[DwOp]string{
 	DW_OP_GNU_convert:          "DW_OP_GNU_convert",
 	DW_OP_GNU_reinterpret:      "DW_OP_GNU_reinterpret",
 	DW_OP_GNU_parameter_ref:    "DW_OP_GNU_parameter_ref",
-	DW_OP_GNU_addr_index:       "DW_OP_GNU_addr_index",
-	DW_OP_GNU_const_index:      "DW_OP_GNU_const_index",
 }

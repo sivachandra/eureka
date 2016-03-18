@@ -38,7 +38,7 @@ func (d *DwData) readAttr(
 		if form.IsLocListPtr() {
 			attr.Value, err = d.readAttrUint64(u, r, form, en)
 		} else if form.IsExprLoc() {
-			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+			attr.Value, err = d.readDwExpr(u, r, en)
 		} else {
 			err = fmt.Errorf("Unsupported form %s for DW_AT_Location.", DwFormStr[form])
 		}
@@ -56,7 +56,7 @@ func (d *DwData) readAttr(
 		if form.IsConstant() {
 			attr.Value, err = d.readAttrUint32(u, r, form, en)
 		} else if form.IsExprLoc() {
-			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+			attr.Value, err = d.readDwExpr(u, r, en)
 		} else if form.IsRef() {
 			attr.Value, err = d.readAttrRef(u, r, form, en)
 		} else {
@@ -102,7 +102,7 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrRef(u, r, form, en)
 	case DW_AT_string_length:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+			attr.Value, err = d.readDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
 			attr.Value, err = d.readAttrUint64(u, r, form, en)
 		} else {
@@ -136,7 +136,7 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_lower_bound:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+			attr.Value, err = d.readDwExpr(u, r, en)
 		} else if form.IsConstant() {
 			attr.Value, err = d.readAttrInt64(u, r, form, en)
 		} else if form.IsRef() {
@@ -151,7 +151,7 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_return_addr:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+			attr.Value, err = d.readDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
 			attr.Value, err = d.readAttrUint64(u, r, form, en)
 		} else {
@@ -169,7 +169,7 @@ func (d *DwData) readAttr(
 		}
 	case DW_AT_bit_stride:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+			attr.Value, err = d.readDwExpr(u, r, en)
 		} else if form.IsConstant() {
 			attr.Value, err = d.readAttrInt64(u, r, form, en)
 		} else if form.IsRef() {
@@ -180,7 +180,7 @@ func (d *DwData) readAttr(
 		}
 	case DW_AT_upper_bound:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+			attr.Value, err = d.readDwExpr(u, r, en)
 		} else if form.IsConstant() {
 			attr.Value, err = d.readAttrInt64(u, r, form, en)
 		} else if form.IsRef() {
@@ -223,7 +223,7 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_frame_base:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+			attr.Value, err = d.readDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
 			attr.Value, err = d.readAttrUint64(u, r, form, en)
 		} else {
@@ -238,7 +238,7 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrRef(u, r, form, en)
 	case DW_AT_segment:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+			attr.Value, err = d.readDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
 			attr.Value, err = d.readAttrUint64(u, r, form, en)
 		} else {
@@ -249,7 +249,7 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrRef(u, r, form, en)
 	case DW_AT_static_link:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+			attr.Value, err = d.readDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
 			attr.Value, err = d.readAttrUint64(u, r, form, en)
 		} else {
@@ -266,7 +266,7 @@ func (d *DwData) readAttr(
 		attr.Value = DwVirtuality(v)
 	case DW_AT_vtable_elem_location:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+			attr.Value, err = d.readDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
 			attr.Value, err = d.readAttrUint64(u, r, form, en)
 		} else {
@@ -315,7 +315,13 @@ func (d *DwData) readAttr(
 	case DW_AT_GNU_all_call_sites:
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_GNU_call_site_value:
-		attr.Value, err = d.readAttrByteSlice(u, r, form, en)
+		if form.IsExprLoc() {
+			attr.Value, err = d.readDwExpr(u, r, en)
+		} else {
+			err = fmt.Errorf(
+				"Unsupported form %s for %s.",
+				DwFormStr[form], DwAtStr[DW_AT_GNU_call_site_value])
+		}
 	default:
 		attr.Value, err = d.readAttrByteSlice(u, r, form, en)
 	}

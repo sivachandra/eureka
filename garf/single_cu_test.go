@@ -146,9 +146,15 @@ func TestDebugInfoSingleCU(t *testing.T) {
 				t.Errorf("Unexpected value for attr DW_AT_high_pc of child DIE.")
 			}
 		case DW_AT_frame_base:
-			val := a.Value.([]byte)
-			if len(val) != 1 {
+			expr := a.Value.(DwExpr)
+			if len(expr) != 1 {
 				t.Errorf("Unexpected length of byte slice for DW_AT_frame_base.")
+			}
+			if expr[0].Op != DW_OP_call_frame_cfa {
+				t.Errorf("Wrong opcode in the DWARF expression.")
+			}
+			if len(expr[0].Operands) != 0 {
+				t.Errorf("Wrong operand count in the operation of the DWARF expr.")
 			}
 		case DW_AT_GNU_all_call_sites:
 			val := a.Value.(bool)
