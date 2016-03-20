@@ -774,7 +774,7 @@ func (d *DwData) readAttrRef(
 		return nil, fmt.Errorf("Error reading form %s data.\n%s", DwFormStr[f], err.Error())
 	}
 
-	dieTree, err := d.readDIETree(u, u.headerOffset + offset)
+	dieTree, err := d.readDIETree(u, u.headerOffset+offset)
 	if err != nil {
 		err = fmt.Errorf(
 			"Error reading DIE tree at offset %d specified by form %s.\n%s",

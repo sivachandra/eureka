@@ -49,16 +49,16 @@ type Attribute struct {
 
 type DIE struct {
 	// The debug info tag of this DIE.
-	Tag        DwTag
+	Tag DwTag
 
 	// A map of attributes of this DIE.
 	Attributes map[DwAt]Attribute
 
 	// The parent DIE of this DIE.
-	Parent     *DIE
+	Parent *DIE
 
 	// The children of this DIE.
-	Children   []*DIE
+	Children []*DIE
 
 	// The unit to which this DIE belongs to.
 	Unit *DwUnit
@@ -235,11 +235,11 @@ func (t *DebugStrTbl) ReadStr(offset uint64) (string, error) {
 }
 
 type DwData struct {
-	fileName       string
-	elf            *golf.ELF
-	debugStrTbl    *DebugStrTbl
-	compUnits      []*DwUnit
-	typeUnits      []*DwUnit
+	fileName    string
+	elf         *golf.ELF
+	debugStrTbl *DebugStrTbl
+	compUnits   []*DwUnit
+	typeUnits   []*DwUnit
 
 	// Mapping from offset into the .debug_info section to the DIE at that
 	// offset.

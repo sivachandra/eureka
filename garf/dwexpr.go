@@ -34,7 +34,7 @@ func (d *DwData) readDwExpr(u *DwUnit, r *bytes.Reader, en binary.ByteOrder) (Dw
 
 	var expr DwExpr
 	rem := r.Len()
-	for uint64(rem - r.Len()) < l {
+	for uint64(rem-r.Len()) < l {
 		b, err := r.ReadByte()
 		if err != nil {
 			err = fmt.Errorf(
