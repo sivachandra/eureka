@@ -36,9 +36,9 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrRef(u, r, form, en)
 	case DW_AT_location:
 		if form.IsLocListPtr() {
-			attr.Value, err = d.readAttrUint64(u, r, form, en)
+			attr.Value, err = d.readAttrLocList(u, r, form, en)
 		} else if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else {
 			err = fmt.Errorf("Unsupported form %s for DW_AT_Location.", DwFormStr[form])
 		}
@@ -56,7 +56,7 @@ func (d *DwData) readAttr(
 		if form.IsConstant() {
 			attr.Value, err = d.readAttrUint32(u, r, form, en)
 		} else if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else if form.IsRef() {
 			attr.Value, err = d.readAttrRef(u, r, form, en)
 		} else {
@@ -102,9 +102,9 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrRef(u, r, form, en)
 	case DW_AT_string_length:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
-			attr.Value, err = d.readAttrUint64(u, r, form, en)
+			attr.Value, err = d.readAttrLocList(u, r, form, en)
 		} else {
 			err = fmt.Errorf(
 				"Unsupported form %s for DW_AT_string_length.", DwFormStr[form])
@@ -136,7 +136,7 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_lower_bound:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else if form.IsConstant() {
 			attr.Value, err = d.readAttrInt64(u, r, form, en)
 		} else if form.IsRef() {
@@ -151,9 +151,9 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_return_addr:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
-			attr.Value, err = d.readAttrUint64(u, r, form, en)
+			attr.Value, err = d.readAttrLocList(u, r, form, en)
 		} else {
 			err = fmt.Errorf(
 				"Unsupported form %s for DW_AT_return_addr.", DwFormStr[form])
@@ -169,7 +169,7 @@ func (d *DwData) readAttr(
 		}
 	case DW_AT_bit_stride:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else if form.IsConstant() {
 			attr.Value, err = d.readAttrInt64(u, r, form, en)
 		} else if form.IsRef() {
@@ -180,7 +180,7 @@ func (d *DwData) readAttr(
 		}
 	case DW_AT_upper_bound:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else if form.IsConstant() {
 			attr.Value, err = d.readAttrInt64(u, r, form, en)
 		} else if form.IsRef() {
@@ -223,9 +223,9 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_frame_base:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
-			attr.Value, err = d.readAttrUint64(u, r, form, en)
+			attr.Value, err = d.readAttrLocList(u, r, form, en)
 		} else {
 			err = fmt.Errorf(
 				"Unsupported form %s for DW_AT_frame_base.", DwFormStr[form])
@@ -238,9 +238,9 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrRef(u, r, form, en)
 	case DW_AT_segment:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
-			attr.Value, err = d.readAttrUint64(u, r, form, en)
+			attr.Value, err = d.readAttrLocList(u, r, form, en)
 		} else {
 			err = fmt.Errorf(
 				"Unsupported form %s for DW_AT_segment.", DwFormStr[form])
@@ -249,9 +249,9 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrRef(u, r, form, en)
 	case DW_AT_static_link:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
-			attr.Value, err = d.readAttrUint64(u, r, form, en)
+			attr.Value, err = d.readAttrLocList(u, r, form, en)
 		} else {
 			err = fmt.Errorf(
 				"Unsupported form %s for DW_AT_static_link.", DwFormStr[form])
@@ -266,9 +266,9 @@ func (d *DwData) readAttr(
 		attr.Value = DwVirtuality(v)
 	case DW_AT_vtable_elem_location:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else if form.IsLocListPtr() {
-			attr.Value, err = d.readAttrUint64(u, r, form, en)
+			attr.Value, err = d.readAttrLocList(u, r, form, en)
 		} else {
 			err = fmt.Errorf(
 				"Unsupported form %s for DW_AT_vtable_elem_location.",
@@ -316,7 +316,7 @@ func (d *DwData) readAttr(
 		attr.Value, err = d.readAttrFlag(u, r, form, en)
 	case DW_AT_GNU_call_site_value:
 		if form.IsExprLoc() {
-			attr.Value, err = d.readDwExpr(u, r, en)
+			attr.Value, err = d.readSizeAndDwExpr(u, r, en)
 		} else {
 			err = fmt.Errorf(
 				"Unsupported form %s for %s.",
@@ -844,4 +844,14 @@ func (d *DwData) readAttrByteSlice(
 	}
 
 	return b, nil
+}
+
+func (d *DwData) readAttrLocList(
+	u *DwUnit, r *bytes.Reader, form DwForm, en binary.ByteOrder) (LocList, error) {
+	offset, err := d.readAttrUint64(u, r, form, en)
+	if err != nil {
+		err = fmt.Errorf("Error reading .debug_loc offset.\n%s", err.Error())
+		return nil, err
+	}
+	return d.readLocList(u, offset, en)
 }

@@ -87,6 +87,50 @@ type DwOperation struct {
 
 type DwExpr []DwOperation
 
+type LocListEntryType uint8
+
+const (
+	LocListEntryTypeNormal            = LocListEntryType(1)
+	LocListEntryTypeDefault           = LocListEntryType(2)
+	LocListEntryTypeBaseAddrSelection = LocListEntryType(3)
+	LocListEntryTypeEndOfList         = LocListEntryType(4)
+)
+
+type LocListEntry interface {
+	EntryType() LocListEntryType
+}
+
+type NormalLocListEntry struct {
+	Begin uint64
+	End   uint64
+	Loc   DwExpr
+}
+
+func (e NormalLocListEntry) EntryType() LocListEntryType {
+	return LocListEntryTypeNormal
+}
+
+type DefaultLocListEntry DwExpr
+
+func (e DefaultLocListEntry) EntryType() LocListEntryType {
+	return LocListEntryTypeDefault
+}
+
+type BaseAddrSelectionLocListEntry uint64
+
+func (e BaseAddrSelectionLocListEntry) EntryType() LocListEntryType {
+	return LocListEntryTypeBaseAddrSelection
+}
+
+type EndOfListLocListEntry struct {
+}
+
+func (e EndOfListLocListEntry) EntryType() LocListEntryType {
+	return LocListEntryTypeEndOfList
+}
+
+type LocList []LocListEntry
+
 type LnInfoTimestamp interface {
 }
 

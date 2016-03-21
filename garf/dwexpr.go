@@ -26,12 +26,18 @@ func operandReadError(op DwOp, i uint8, e error) error {
 	return e
 }
 
-func (d *DwData) readDwExpr(u *DwUnit, r *bytes.Reader, en binary.ByteOrder) (DwExpr, error) {
+func (d *DwData) readSizeAndDwExpr(
+	u *DwUnit, r *bytes.Reader, en binary.ByteOrder) (DwExpr, error) {
 	l, err := leb128.ReadUnsigned(r)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading length of exprloc data.\n%s", err.Error())
 	}
 
+	return d.readDwExpr(u, r, en, l)
+}
+
+func (d *DwData) readDwExpr(
+	u *DwUnit, r *bytes.Reader, en binary.ByteOrder, l uint64) (DwExpr, error) {
 	var expr DwExpr
 	rem := r.Len()
 	for uint64(rem-r.Len()) < l {
