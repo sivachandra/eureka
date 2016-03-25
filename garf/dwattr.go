@@ -160,7 +160,7 @@ func (d *DwData) readAttr(
 		}
 	case DW_AT_start_scope:
 		if form.IsRangeListPtr() {
-			attr.Value, err = d.readAttrUint64(u, r, form, en)
+			attr.Value, err = d.readAttrRangeList(u, r, form, en)
 		} else if form.IsConstant() {
 			attr.Value, err = d.readAttrInt64(u, r, form, en)
 		} else {
@@ -275,7 +275,7 @@ func (d *DwData) readAttr(
 				DwFormStr[form])
 		}
 	case DW_AT_ranges:
-		attr.Value, err = d.readAttrUint64(u, r, form, en)
+		attr.Value, err = d.readAttrRangeList(u, r, form, en)
 	case DW_AT_picture_string:
 		attr.Value, err = d.readAttrStr(u, r, form, en)
 	case DW_AT_mutable:
@@ -854,4 +854,14 @@ func (d *DwData) readAttrLocList(
 		return nil, err
 	}
 	return d.readLocList(u, offset, en)
+}
+
+func (d *DwData) readAttrRangeList(
+	u *DwUnit, r *bytes.Reader, form DwForm, en binary.ByteOrder) (RangeList, error) {
+	offset, err := d.readAttrUint64(u, r, form, en)
+	if err != nil {
+		err = fmt.Errorf("Error reading .debug_ranges offset.\n%s", err.Error())
+		return nil, err
+	}
+	return d.readRangeList(u, offset, en)
 }

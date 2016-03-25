@@ -97,7 +97,7 @@ const (
 )
 
 type LocListEntry interface {
-	EntryType() LocListEntryType
+	LocListEntryType() LocListEntryType
 }
 
 type NormalLocListEntry struct {
@@ -106,26 +106,26 @@ type NormalLocListEntry struct {
 	Loc   DwExpr
 }
 
-func (e NormalLocListEntry) EntryType() LocListEntryType {
+func (e NormalLocListEntry) LocListEntryType() LocListEntryType {
 	return LocListEntryTypeNormal
 }
 
 type DefaultLocListEntry DwExpr
 
-func (e DefaultLocListEntry) EntryType() LocListEntryType {
+func (e DefaultLocListEntry) LocListEntryType() LocListEntryType {
 	return LocListEntryTypeDefault
 }
 
 type BaseAddrSelectionLocListEntry uint64
 
-func (e BaseAddrSelectionLocListEntry) EntryType() LocListEntryType {
+func (e BaseAddrSelectionLocListEntry) LocListEntryType() LocListEntryType {
 	return LocListEntryTypeBaseAddrSelection
 }
 
 type EndOfListLocListEntry struct {
 }
 
-func (e EndOfListLocListEntry) EntryType() LocListEntryType {
+func (e EndOfListLocListEntry) LocListEntryType() LocListEntryType {
 	return LocListEntryTypeEndOfList
 }
 
