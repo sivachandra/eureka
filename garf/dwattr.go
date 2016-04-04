@@ -16,8 +16,8 @@ import (
 )
 
 import (
+	"eureka/guts/leb128"
 	"eureka/utils"
-	"eureka/utils/leb128"
 )
 
 func (d *DwData) readAttr(

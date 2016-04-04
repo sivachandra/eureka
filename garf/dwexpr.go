@@ -16,7 +16,7 @@ import (
 )
 
 import (
-	"eureka/utils/leb128"
+	"eureka/guts/leb128"
 )
 
 func operandReadError(op DwOp, i uint8, e error) error {

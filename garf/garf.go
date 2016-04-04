@@ -17,8 +17,8 @@ import (
 
 import (
 	"eureka/golf"
+	"eureka/guts/leb128"
 	"eureka/utils"
-	"eureka/utils/leb128"
 )
 
 type DwFormat uint8
