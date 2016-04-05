@@ -16,7 +16,7 @@ import (
 
 import (
 	"eureka/guts/leb128"
-	"eureka/utils"
+	"eureka/guts/ruts"
 )
 
 func (d *DwData) readLineNumberInfo(u *DwUnit) (*LnInfo, error) {
@@ -190,7 +190,7 @@ func (d *DwData) readLineNumberInfo(u *DwUnit) (*LnInfo, error) {
 
 	// Read directory entries
 	for true {
-		dir, err := utils.ReadCString(sectReader)
+		dir, err := ruts.ReadCString(sectReader)
 		if err != nil {
 			err = fmt.Errorf(
 				"Error reading directory entry from line info header.\n%s",
@@ -208,7 +208,7 @@ func (d *DwData) readLineNumberInfo(u *DwUnit) (*LnInfo, error) {
 	for true {
 		var fileEntry LnFileEntry
 
-		fileEntry.Path, err = utils.ReadCString(sectReader)
+		fileEntry.Path, err = ruts.ReadCString(sectReader)
 		if err != nil {
 			err = fmt.Errorf(
 				"Error reading file name from line info header.\n%s",

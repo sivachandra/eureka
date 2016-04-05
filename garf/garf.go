@@ -18,7 +18,7 @@ import (
 import (
 	"eureka/golf"
 	"eureka/guts/leb128"
-	"eureka/utils"
+	"eureka/guts/ruts"
 )
 
 type DwFormat uint8
@@ -275,7 +275,7 @@ func (t *DebugStrTbl) ReadStr(offset uint64) (string, error) {
 		return "", fmt.Errorf("Unable to seek to .debug_str offset.\n%s", err.Error())
 	}
 
-	return utils.ReadCString(r)
+	return ruts.ReadCString(r)
 }
 
 type DwData struct {

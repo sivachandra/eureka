@@ -17,7 +17,7 @@ import (
 
 import (
 	"eureka/guts/leb128"
-	"eureka/utils"
+	"eureka/guts/ruts"
 )
 
 func (d *DwData) readAttr(
@@ -333,7 +333,7 @@ func (d *DwData) readAttrStr(
 	u *DwUnit, r *bytes.Reader, form DwForm, en binary.ByteOrder) (string, error) {
 	switch form {
 	case DW_FORM_string:
-		str, err := utils.ReadUntil(r, byte(0))
+		str, err := ruts.ReadCString(r)
 		if err != nil {
 			err = fmt.Errorf("Error reading inline string attribute value.", err)
 			return "", err
